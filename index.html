@@ -3,13 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>朗读小红星（2s骰子动画 + 目录清单自动载图 + 命名语音鼓励）</title>
+  <title>朗读小红星 · Read-Aloud Stars (Bilingual · Stable)</title>
   <style>
     html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Helvetica Neue",Arial,"Noto Sans CJK SC",sans-serif;background:#fafafa;color:#222}
     .wrap{max-width:1100px;margin:0 auto;padding:18px}
     h1{font-size:22px;margin:0 0 12px}
     .card{background:#fff;border:1px solid #eee;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.04);padding:14px;margin-bottom:14px}
     .sentence{font-size:24px;line-height:1.6;padding:12px 0;min-height:3.2em;position:relative}
+    #sentenceText{display:inline}
+    #sentenceTip{opacity:.6}
     .btns{display:flex;gap:8px;flex-wrap:wrap}
     button{border:0;border-radius:10px;padding:10px 14px;font-size:16px;cursor:pointer;background:#2b7cff;color:#fff}
     button.secondary{background:#eee;color:#222}
@@ -23,8 +25,6 @@
     .ok{color:#d80000}
     .meter{height:10px;background:#eee;border-radius:999px;overflow:hidden}
     .meter>div{height:100%;background:#2b7cff;width:0%}
-    details summary{cursor:pointer;font-weight:600}
-    textarea{width:100%;min-height:180px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:14px;line-height:1.6}
     .pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#f0f0f0;margin-right:6px}
     .flex{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
     .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
@@ -34,8 +34,9 @@
     ul{list-style:none;padding:0;margin:0}
     li{display:flex;align-items:center;gap:8px;margin:6px 0}
     .thumb{width:80px;height:60px;object-fit:cover;border:1px solid #ddd;border-radius:6px;background:#f8f8f8}
-    .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;padding:16px;z-index:99}
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;padding:16px;}
     .modal .panel{background:#fff;border-radius:16px;max-width:980px;width:100%;padding:12px 12px 16px;box-shadow:0 8px 24px rgba(0,0,0,.2)}
+    .modal.small .panel{max-width:420px}
     .panel h2{margin:8px 0 8px;font-size:18px}
     .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0 10px}
     .toolbar input[type=range]{width:120px}
@@ -44,13 +45,17 @@
     .swatch{width:24px;height:24px;border-radius:50%;border:1px solid #ccc;cursor:pointer}
     .hint{font-size:12px;color:#666}
     .warnnote{font-size:12px;color:#aa0000}
-    .tooltoggle .on{background:#2b7cff;color:#fff}
-    .tooltoggle .off{background:#f0f0f0;color:#333}
     .gallery{display:flex;gap:8px;overflow:auto;padding:8px 0}
     .gitem{flex:0 0 auto;border:2px solid transparent;border-radius:10px;padding:2px;cursor:pointer;background:#fff}
     .gitem.active{border-color:#2b7cff}
     .gitem img{display:block;width:120px;height:90px;object-fit:cover;border-radius:8px}
     .note{font-size:12px;color:#666;margin-left:6px}
+    .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+    .gear{background:#f0f0f0;color:#333;border-radius:10px;border:1px solid #e5e5e5;cursor:pointer}
+    .langpill{background:#eef7ff;border:1px solid #cfe6ff;border-radius:999px;padding:2px 8px}
+    .grid{display:grid;grid-template-columns:1fr;gap:10px}
+    .label{font-size:14px;color:#555}
+    .row input[type=number]{width:80px}
     /* 🎲 Dice animation 2s */
     .dice{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:52px;height:52px;border-radius:10px;background:#fff;border:2px solid #333;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none}
     .dot{width:8px;height:8px;background:#333;border-radius:50%;position:absolute}
@@ -66,29 +71,31 @@
       75%{transform:translate(calc(-50% - 6px),calc(-50% + 4px)) rotate(320deg) scale(1.05)}
       100%{opacity:0;transform:translate(-50%,-50%) rotate(360deg) scale(1)}
     }
+    /* error toast */
+    #toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#222;color:#fff;padding:8px 12px;border-radius:10px;font-size:12px;display:none;z-index:1000}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>🎤 朗读小红星（2s骰子动画 + 目录清单自动载图 + 命名语音鼓励）</h1>
+    <div class="topbar">
+      <h1 id="titleH1">🎤 朗读小红星</h1>
+      <div class="row">
+        <span class="langpill"><span id="langLabel">语言 / Language：</span><strong id="langShow">中文</strong></span>
+        <button id="btnParent" class="gear" role="button" aria-haspopup="dialog">⚙️ <span id="parentBtnText">家长设置</span></button>
+      </div>
+    </div>
 
     <div class="card">
       <div class="flex">
-        <div class="scorebox">⭐ 已获红星：<span id="starsCount">0</span></div>
-        <span class="pill">识别语言：中文（普通话）</span>
-        <span class="pill">建议浏览器：Chrome / Edge（HTTPS 更稳定）</span>
-        <span class="badge">奖励：每满 N 星弹出涂色</span>
-      </div>
-      <div class="row">
-        <label>判定阈值：<input id="thres" type="range" min="70" max="98" value="85"> <span id="thresVal">85</span>%</label>
-        <button id="btnThresReset" class="secondary">阈值复位 85%</button>
-        <label>奖励阈值（每 N 星）：<input id="rewardStep" type="range" min="1" max="20" value="5"> <span id="rewardVal">5</span> 星</label>
-        <button id="btnRewardReset" class="secondary">奖励复位 5 星</button>
-        <label>小朋友名字：<input id="kidName" type="text" placeholder="kalie" value="kalie"></label>
-        <button id="btnSaveKid" class="secondary">保存名字</button>
+        <div class="scorebox"><span id="scoreLabel">⭐ 已获红星：</span><span id="starsCount">0</span></div>
+        <span class="pill" id="recHint">识别语言：中文（普通话）</span>
+        <span class="pill" id="browserHint">建议浏览器：Chrome / Edge（HTTPS 更稳定）</span>
+        <span class="badge" id="rewardHint">奖励：每满 N 星弹出涂色</span>
       </div>
 
-      <div class="sentence" id="sentence">点“抽一句”开始
+      <div class="sentence" id="sentence">
+        <span id="sentenceText"></span>
+        <span id="sentenceTip">点“抽一句”开始</span>
         <div id="dice" class="dice">
           <div class="dot tl"></div><div class="dot tr"></div>
           <div class="dot ml"></div><div class="dot c"></div><div class="dot mr"></div>
@@ -111,9 +118,238 @@
     </div>
 
     <div class="card">
-      <details open>
-        <summary>📚 句子列表（可编辑）</summary>
-        <textarea id="sentencesArea">胖娃娃的脏衣服掉进水里了，小袋鼠看见就笑了。
+      <details>
+        <summary id="sentencesSummary">📚 句子列表（可编辑）</summary>
+        <textarea id="sentencesArea" style="display:none"></textarea>
+        <div class="hint" id="sentencesHint">句子列表默认隐藏，仅家长模式可见并编辑。</div>
+      </details>
+    </div>
+
+    <div class="card">
+      <details>
+        <summary id="imagesSummary">🖼️ 奖励涂色图片（网络链接 / 本地上传 / 目录清单）</summary>
+        <div class="hint" id="imagesHint">图片管理默认隐藏，仅家长模式可见。小朋友可在奖励弹窗中从缩略图选择。</div>
+        <ul id="imgList"></ul>
+      </details>
+    </div>
+  </div>
+
+  <!-- Parent modal (PIN lock) -->
+  <div class="modal small" id="parentModal" aria-hidden="true" style="z-index:120;">
+    <div class="panel">
+      <h2 id="parentTitle">🔐 家长设置</h2>
+      <div id="pinView" class="grid">
+        <label class="label" id="pinLabel">输入家长 PIN（默认 1234）：</label>
+        <div class="row">
+          <input id="pinInput" type="password" placeholder="1234" />
+          <button id="pinOk">进入</button>
+          <button id="pinCancel" class="secondary">取消</button>
+        </div>
+      </div>
+      <div id="settingsView" style="display:none">
+        <div class="grid">
+          <div class="row">
+            <label class="label" id="thresLabel">判定阈值：</label>
+            <input id="thres" type="range" min="70" max="98" value="85"> <span id="thresVal">85</span>%
+            <button id="btnThresReset" class="secondary">阈值复位 85%</button>
+          </div>
+          <div class="row">
+            <label class="label" id="rewardStepLabel">奖励阈值（每 N 星）：</label>
+            <input id="rewardStep" type="range" min="1" max="20" value="5"> <span id="rewardVal">5</span>
+            <span id="rewardUnit">星</span>
+            <button id="btnRewardReset" class="secondary">奖励复位 5 星</button>
+          </div>
+          <div class="row">
+            <label class="label" id="kidNameLabel">小朋友名字：</label>
+            <input id="kidName" type="text" placeholder="kalie" value="kalie">
+            <button id="btnSaveKid" class="secondary">保存名字</button>
+          </div>
+          <div class="row">
+            <label class="label" id="langSelLabel">测试语言：</label>
+            <select id="langSel">
+              <option value="zh">中文</option>
+              <option value="en">English</option>
+            </select>
+            <span class="hint" id="langHint">影响界面语言与语音识别语言（中文/英文）。鼓励语音始终为英文。</span>
+          </div>
+          <hr>
+          <div class="row">
+            <input type="text" id="imgUrl" placeholder="粘贴网络图片地址（允许CORS最佳）">
+            <button id="btnAddUrl" class="secondary">添加网络图片</button>
+          </div>
+          <div class="row">
+            <input type="file" id="imgFile" accept="image/*">
+            <button id="btnAddFile" class="secondary">上传本地图片</button>
+          </div>
+          <div class="row">
+            <button id="btnLoadManifest" class="secondary">从目录清单载入</button>
+            <span class="hint" id="manifestHint">在同目录放 <code>reward_images.json</code> 或 <code>reward_images.txt</code>。</span>
+          </div>
+          <div class="row">
+              <button id="btnEditSentences" class="secondary">编辑句子列表</button>
+            <button id="btnResetZH" class="secondary">恢复中文30句</button>
+            <button id="btnClearZH" class="secondary">清空中文句子</button>
+            <button id="btnClearEN" class="secondary">清空英文句子</button>
+            <button id="btnCloseParent">完成</button>
+          </div>
+        </div>
+        <ul id="imgListParent"></ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reward modal -->
+  <div class="modal" id="rewardModal" aria-hidden="true" style="z-index:110;">
+    <div class="panel">
+      <h2 id="rewardTitle">🎁 选择要涂色的图片，然后开始上色 <span class="note">（Undo按钮/右键撤销；滚轮/双指缩放；拖动平移）</span></h2>
+      <div id="gallery" class="gallery"></div>
+      <div class="toolbar">
+        <div><span id="brushLabel">画笔：</span><input type="range" id="brush" min="2" max="48" value="16"> <span id="brushSize">16</span> px</div>
+        <div class="row">
+          <span id="tolLabel">填充容差：</span><input type="range" id="tol" min="0" max="60" value="20"><span id="tolVal">20</span>
+        </div>
+        <div id="palette" class="row"></div>
+        <div class="row toolline">
+          <span id="viewLabel">视图：</span>
+          <button id="zoomOut" class="ghost">-</button>
+          <input type="range" id="zoom" min="50" max="200" value="100">
+          <button id="zoomIn" class="ghost">+</button>
+          <button id="fit" class="ghost">适配</button>
+          <span class="tooltoggle">
+            <button id="toolPaint" class="ghost">🖌️画笔</button>
+            <button id="toolBucket" class="ghost">🪣颜料桶</button>
+            <button id="toolPan" class="ghost">🖐️移动</button>
+          </span>
+          <button id="undoBtn" class="secondary">↩️ 撤销</button>
+        </div>
+        <div class="row">
+          <button id="btnClear" class="secondary">清除所有改动</button>
+          <button id="btnSaveImg" class="secondary">保存到相册</button>
+          <button id="btnClose">完成</button>
+        </div>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="view" class="view" width="1400" height="1050"></canvas>
+      </div>
+      <div id="corsWarn" class="warnnote" style="display:none;">提示：当前图片来源不支持跨域，仍可涂色，但可能无法保存为 PNG。</div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+<script>
+/* --- Crash guard: show toast on error --- */
+window.addEventListener('error', (e)=>{
+  console.error(e);
+  const t=document.getElementById('toast');
+  t.textContent = '⚠️ 脚本错误：' + (e.message||'unknown');
+  t.style.display='block';
+  setTimeout(()=>t.style.display='none', 4000);
+});
+
+/* ---------- i18n ---------- */
+const I18N = {
+  zh: { title:"🎤 朗读小红星", langLabel:"语言 / Language：", parentBtn:"家长设置",
+    scoreLabel:"⭐ 已获红星：", recHint:"识别语言：中文（普通话）", browserHint:"建议浏览器：Chrome / Edge（HTTPS 更稳定）",
+    rewardHint:"奖励：每满 N 星弹出涂色", sentenceTip:"点“抽一句”开始", btnNext:"🎲 抽一句", btnListen:"🎙️ 开始朗读",
+    btnStop:"⏹️ 结束判定", btnRetry:"🔁 重试本句", btnShow:"👀 显示答案", btnColorNow:"🎨 去涂色", btnReset:"🗑️ 清空星星",
+    sentencesSummary:"📚 句子列表（可编辑）", sentencesHint:"句子列表默认隐藏，仅家长模式可见并编辑。",
+    imagesSummary:"🖼️ 奖励涂色图片（网络链接 / 本地上传 / 目录清单）", imagesHint:"图片管理默认隐藏，仅家长模式可见。小朋友可在奖励弹窗中从缩略图选择。",
+    parentTitle:"🔐 家长设置", pinLabel:"输入家长 PIN（默认 1234）：", pinOk:"进入", pinCancel:"取消",
+    thresLabel:"判定阈值：", btnThresReset:"阈值复位 85%", rewardStepLabel:"奖励阈值（每 N 星）：", btnRewardReset:"奖励复位 5 星",
+    kidNameLabel:"小朋友名字：", btnSaveKid:"保存名字", langSelLabel:"测试语言：",
+    langHint:"影响界面语言与语音识别语言（中文/英文）。鼓励语音始终为英文。", btnResetZH:"恢复中文30句", btnClearEN:"清空英文句子", btnClearZH:"清空中文句子", 
+    manifestHint:"在同目录放 reward_images.json 或 reward_images.txt。", btnAddUrl:"添加网络图片", btnAddFile:"上传本地图片",
+    btnLoadManifest:"从目录清单载入", btnEditSentences:"编辑句子列表", btnCloseParent:"完成",
+    rewardTitle:"🎁 选择要涂色的图片，然后开始上色 （Undo按钮/右键撤销；滚轮/双指缩放；拖动平移）",
+    brushLabel:"画笔：", tolLabel:"填充容差：", viewLabel:"视图：", fit:"适配", toolPaint:"🖌️画笔", toolBucket:"🪣颜料桶",
+    toolPan:"🖐️移动", undoBtn:"↩️ 撤销", btnClear:"清除所有改动", btnSaveImg:"保存到相册", btnClose:"完成",
+    corsWarn:"提示：当前图片来源不支持跨域，仍可涂色，但可能无法保存为 PNG。",
+    listening:"正在听……", tapStart:"请点开始朗读", noVoice:"未识别到语音",
+    done:(s,t)=>`判定完成（相似度：${s}%，阈值：${t}%）`, notpass:(s,t)=>`未通过（相似度：${s}%，阈值：${t}%）。可以点“重试本句”。`,
+    rewardUnit:"星"
+  },
+  en: { title:"🎤 Read-Aloud Stars", langLabel:"Language：", parentBtn:"Parent Settings",
+    scoreLabel:"⭐ Stars earned: ", recHint:"Recognition language: English (US)",
+    browserHint:"Recommended: Chrome / Edge (HTTPS is more stable)",
+    rewardHint:"Reward: Coloring pops up every N stars", sentenceTip:"Tap “Roll” to start", btnNext:"🎲 Roll",
+    btnListen:"🎙️ Start", btnStop:"⏹️ Stop & Judge", btnRetry:"🔁 Retry This Line", btnShow:"👀 Show Answer",
+    btnColorNow:"🎨 Coloring", btnReset:"🗑️ Reset Stars", sentencesSummary:"📚 Sentence List (Editable)",
+    sentencesHint:"Hidden by default; visible in Parent Settings only.",
+    imagesSummary:"🖼️ Reward Coloring Images (URL / Local Upload / Manifest)",
+    imagesHint:"Hidden by default; kids choose from thumbnails in the reward modal.",
+    parentTitle:"🔐 Parent Settings", pinLabel:"Enter Parent PIN (default 1234):", pinOk:"Enter", pinCancel:"Cancel",
+    thresLabel:"Pass threshold:", btnThresReset:"Reset to 85%", rewardStepLabel:"Reward every (N) stars:",
+    btnRewardReset:"Reset to 5 stars", kidNameLabel:"Child's name:", btnSaveKid:"Save name",
+    langSelLabel:"Test language:", langHint:"Controls UI language and recognition language (Chinese/English). Encouragement voice is always English.", btnResetZH:"Reset Chinese 30 test sentences", btnClearEN:"Clear English test sentences", 
+    btnClearZH:"Clear Chinese test sentences", 
+    manifestHint:"Place reward_images.json or reward_images.txt in the same folder.", btnAddUrl:"Add image URL",
+    btnAddFile:"Upload local image", btnLoadManifest:"Load from manifest", btnEditSentences:"Edit sentences",
+    btnCloseParent:"Done", rewardTitle:"🎁 Pick an image and start coloring (Undo/right-click; wheel/pinch zoom; drag to pan)",
+    brushLabel:"Brush:", tolLabel:"Fill tolerance:", viewLabel:"View:", fit:"Fit", toolPaint:"🖌️Brush",
+    toolBucket:"🪣Bucket", toolPan:"🖐️Pan", undoBtn:"↩️ Undo", btnClear:"Clear changes", btnSaveImg:"Save as PNG",
+    btnClose:"Done", corsWarn:"Note: Cross-origin image; coloring OK but saving PNG may be blocked.",
+    listening:"Listening…", tapStart:"Tap Start to read aloud", noVoice:"No voice detected",
+    done:(s,t)=>`Done. Similarity: ${s}%, Threshold: ${t}%`, notpass:(s,t)=>`Not passed. Similarity: ${s}%, Threshold: ${t}%`,
+    rewardUnit:"stars"
+  }
+};
+
+/* ---------- Utils ---------- */
+const $ = id => document.getElementById(id);
+const zhNormalize = s => s.toLowerCase().replace(/[，,。\.！!？\?；;：“”"『』「」\(\)\[\]—\-、·…\s]/g,'');
+function levenshtein(a,b){const an=a.length,bn=b.length;if(an===0)return bn;if(bn===0)return an;const v0=new Array(bn+1).fill(0),v1=new Array(bn+1).fill(0);for(let i=0;i<=bn;i++)v0[i]=i;for(let i=0;i<an;i++){v1[0]=i+1;for(let j=0;j<bn;j++){const cost=a[i]===b[j]?0:1;v1[j+1]=Math.min(v1[j]+1,v0[j+1]+1,v0[j]+cost);}for(let j=0;j<=bn;j++)v0[j]=v1[j];}return v1[bn];}
+const similarity=(a,b)=>{const A=zhNormalize(a),B=zhNormalize(b);if(!A&&!B)return 1;return 1-levenshtein(A,B)/Math.max(A.length,B.length);};
+function speakEN(text){ if(!('speechSynthesis'in window))return; const u=new SpeechSynthesisUtterance(text); u.lang='en-US'; speechSynthesis.speak(u); }
+function textOr(id, value){const el=$(id); if(el && value!=null) el.textContent=value;}
+
+/* ---------- Storage keys ---------- */
+const THRES_KEY='read_star_threshold', REWARD_STEP_KEY='read_star_reward_step', KID_NAME_KEY='read_star_kid_name', LANG_KEY='read_star_lang', PIN_KEY='read_star_pin';
+
+/* ---------- Parent lock ---------- */
+const parentBtn=$('btnParent'), parentModal=$('parentModal'), pinView=$('pinView'), settingsView=$('settingsView');
+const pinInput=$('pinInput'); const pinOk=$('pinOk'); const pinCancel=$('pinCancel');
+parentBtn.addEventListener('click', ()=>{ parentModal.style.display='flex'; parentModal.setAttribute('aria-hidden','false'); pinView.style.display='block'; settingsView.style.display='none'; pinInput.value=''; });
+pinCancel.addEventListener('click', ()=>{ parentModal.style.display='none'; });
+pinOk.addEventListener('click', ()=>{
+  const stored=localStorage.getItem(PIN_KEY)||'1234';
+  if((pinInput.value||'')===stored){ pinView.style.display='none'; settingsView.style.display='block'; }
+  else alert(appLang==='en'?'Wrong PIN':'PIN 不正确');
+});
+
+/* ---------- Settings ---------- */
+const thresEl=$('thres'), thresVal=$('thresVal');
+const rewardEl=$('rewardStep'), rewardVal=$('rewardVal'), rewardUnit=$('rewardUnit');
+const kidNameEl=$('kidName'); const langSel=$('langSel'), langShow=$('langShow');
+function loadThreshold(){const v=Number(localStorage.getItem(THRES_KEY));const t=(isNaN(v)||v<70||v>98)?85:v;thresEl.value=t;thresVal.textContent=t;return t/100;}
+function saveThreshold(){thresVal.textContent=thresEl.value;localStorage.setItem(THRES_KEY,thresEl.value);}
+$('btnThresReset').onclick=()=>{thresEl.value=85;saveThreshold();};
+thresEl.oninput=saveThreshold;
+function loadRewardStep(){const v=Number(localStorage.getItem(REWARD_STEP_KEY));const t=(isNaN(v)||v<1||v>20)?5:v;rewardEl.value=t;rewardVal.textContent=t;return t;}
+function saveRewardStep(){rewardVal.textContent=rewardEl.value;localStorage.setItem(REWARD_STEP_KEY,rewardEl.value);}
+$('btnRewardReset').onclick=()=>{rewardEl.value=5;saveRewardStep();};
+rewardEl.oninput=saveRewardStep;
+function loadKidName(){const v=localStorage.getItem(KID_NAME_KEY)||'kalie';kidNameEl.value=v;return v;}
+$('btnSaveKid').onclick=()=>{localStorage.setItem(KID_NAME_KEY,kidNameEl.value.trim()||'kalie');alert((appLang==='en'?'Saved: ':'已保存名字：')+(kidNameEl.value.trim()||'kalie'));};
+
+function loadLang(){const v=localStorage.getItem(LANG_KEY)||'zh';langSel.value=v;langShow.textContent=(v==='en'?'English':'中文');document.documentElement.lang=(v==='en'?'en':'zh-CN');return v;}
+let appLang=loadLang();
+langSel.addEventListener('change', ()=>{
+  localStorage.setItem(LANG_KEY, langSel.value);
+  appLang = langSel.value;
+  applyI18n();
+  loadSentences();
+});
+
+/* ---------- Encouragement (always EN) ---------- */
+const PASS_EN = [n=>`${n}, you did an amazing job!`, n=>`${n}, that was perfect!`, n=>`${n}, you nailed it!`, n=>`Excellent work, ${n}!`, n=>`Awesome, ${n}! Keep it up!`];
+const FAIL_EN = [n=>`${n}, keep trying!`, n=>`${n}, don’t give up!`, n=>`${n}, let’s try that again!`, n=>`Almost there, ${n}!`];
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+/* ---------- Core state ---------- */
+let pool=[],target='',stars=Number(localStorage.getItem('read_star_stars')||0);$('starsCount').textContent=stars;
+
+function defaultSentencesZH(){return `胖娃娃的脏衣服掉进水里了，小袋鼠看见就笑了。
 小鸭子爬不上路边的桃树，只好在树底下走来走去。
 他一个人在弯弯的道路上，低头看见路边有好多的木头。
 我知道妈妈有五件蓝衣服、六条黑裤子，还有一面大镜子。
@@ -142,116 +378,55 @@
 细细的红线弯成了一朵小小的桃花。
 我长大了会有一匹小红马。
 爸爸的画上有云，有山，有水，有树，有鱼，有鸟，还有九朵花。
-我坐在草地上，看见远远的地里有一群小白羊、一群小黄鸭子，中间还有一头大黑牛。</textarea>
-        <div class="btns">
-          <button id="btnSave" class="secondary">💾 保存列表</button>
-          <button id="btnLoad" class="secondary">↩️ 恢复上次保存</button>
-        </div>
-      </details>
-    </div>
+我坐在草地上，看见远远的地里有一群小白羊、一群小黄鸭子，中间还有一头大黑牛。`;}
 
-    <div class="card">
-      <details open>
-        <summary>🖼️ 奖励涂色图片（支持网络链接 / 本地上传 / 目录清单自动加载）</summary>
-        <div class="row">
-          <input type="text" id="imgUrl" placeholder="粘贴网络图片地址（允许CORS最佳）">
-          <button id="btnAddUrl" class="secondary">添加网络图片</button>
-          <input type="file" id="imgFile" accept="image/*">
-          <button id="btnAddFile" class="secondary">上传本地图片</button>
-          <button id="btnLoadManifest" class="secondary">从目录清单载入</button>
-        </div>
-        <div class="hint">
-          目录清单规则：在本 HTML 同目录放一个
-          <code>reward_images.json</code>（如 <code>["img1.png","img2.jpg"]</code>）或
-          <code>reward_images.txt</code>（每行一个文件名/URL）。
-          GitHub Pages 会按文件名静态提供，但浏览器无法自动“列目录”，因此需要这个清单文件。
-        </div>
-        <ul id="imgList"></ul>
-      </details>
-    </div>
-  </div>
+function defaultSentencesEN(){return ``;}
 
-  <!-- Reward modal -->
-  <div class="modal" id="rewardModal" aria-hidden="true">
-    <div class="panel">
-      <h2>🎁 选择要涂色的图片，然后开始上色 <span class="note">（右键撤销；滚轮/双指缩放；拖动平移）</span></h2>
-      <div id="gallery" class="gallery"></div>
-      <div class="toolbar">
-        <div>画笔：<input type="range" id="brush" min="2" max="48" value="16"> <span id="brushSize">16</span> px</div>
-        <div class="row">
-          <span>填充容差：</span><input type="range" id="tol" min="0" max="60" value="20"><span id="tolVal">20</span>
-        </div>
-        <div id="palette" class="row"></div>
-        <div class="row toolline">
-          <span>视图：</span>
-          <button id="zoomOut" class="ghost">-</button>
-          <input type="range" id="zoom" min="50" max="200" value="100">
-          <button id="zoomIn" class="ghost">+</button>
-          <button id="fit" class="ghost">适配</button>
-          <span class="tooltoggle">
-            <button id="toolPaint" class="on">🖌️画笔</button>
-            <button id="toolBucket" class="off">🪣颜料桶</button>
-            <button id="toolPan" class="off">🖐️移动</button>
-          </span>
-        </div>
-        <div class="row">
-          <button id="btnClear" class="secondary">清除所有改动</button>
-          <button id="btnSaveImg" class="secondary">保存到相册</button>
-          <button id="btnClose">完成</button>
-        </div>
-      </div>
-      <div class="canvas-wrap">
-        <canvas id="view" class="view" width="1400" height="1050"></canvas>
-      </div>
-      <div id="corsWarn" class="warnnote" style="display:none;">提示：当前图片来源不支持跨域，仍可涂色，但可能无法保存为 PNG。</div>
-    </div>
-  </div>
+function loadSentences(){
+  const saved=localStorage.getItem('read_star_sents_'+appLang);
+  const text=saved || (appLang==='en'?defaultSentencesEN():defaultSentencesZH());
+  pool=text.split(/\n+/).map(s=>s.trim()).filter(Boolean);
+  $('sentencesArea').value=text;
+}
+function saveSentences(){ localStorage.setItem('read_star_sents_'+appLang, $('sentencesArea').value); }
+loadSentences();
 
-<script>
-/* ---------- Utils ---------- */
-const $ = id => document.getElementById(id);
-const zhNormalize = s => s.toLowerCase().replace(/[，,。\.！!？\?；;：“”"『』「」\(\)\[\]—\-、·…\s]/g,'');
-function levenshtein(a,b){const an=a.length,bn=b.length;if(an===0)return bn;if(bn===0)return an;const v0=new Array(bn+1).fill(0),v1=new Array(bn+1).fill(0);for(let i=0;i<=bn;i++)v0[i]=i;for(let i=0;i<an;i++){v1[0]=i+1;for(let j=0;j<bn;j++){const cost=a[i]===b[j]?0:1;v1[j+1]=Math.min(v1[j]+1,v0[j+1]+1,v0[j]+cost);}for(let j=0;j<=bn;j++)v0[j]=v1[j];}return v1[bn];}
-const similarity=(a,b)=>{const A=zhNormalize(a),B=zhNormalize(b);if(!A&&!B)return 1;return 1-levenshtein(A,B)/Math.max(A.length,B.length);};
-function speak(text){if(!('speechSynthesis'in window))return;const u=new SpeechSynthesisUtterance(text);u.lang='zh-CN';speechSynthesis.speak(u);}
-
-/* ---------- Settings: thresholds, reward step, kid name ---------- */
-const THRES_KEY='read_star_threshold', REWARD_STEP_KEY='read_star_reward_step', KID_NAME_KEY='read_star_kid_name';
-const thresEl=$('thres'), thresVal=$('thresVal');
-const rewardEl=$('rewardStep'), rewardVal=$('rewardVal');
-const kidNameEl=$('kidName');
-function loadThreshold(){const v=Number(localStorage.getItem(THRES_KEY));const t=(isNaN(v)||v<70||v>98)?85:v;thresEl.value=t;thresVal.textContent=t;return t/100;}
-function saveThreshold(){thresVal.textContent=thresEl.value;localStorage.setItem(THRES_KEY,thresEl.value);}
-thresEl.oninput=saveThreshold;$('btnThresReset').onclick=()=>{thresEl.value=85;saveThreshold();};
-function loadRewardStep(){const v=Number(localStorage.getItem(REWARD_STEP_KEY));const t=(isNaN(v)||v<1||v>20)?5:v;rewardEl.value=t;rewardVal.textContent=t;return t;}
-function saveRewardStep(){rewardVal.textContent=rewardEl.value;localStorage.setItem(REWARD_STEP_KEY,rewardEl.value);}
-rewardEl.oninput=saveRewardStep;$('btnRewardReset').onclick=()=>{rewardEl.value=5;saveRewardStep();};
-function loadKidName(){const v=localStorage.getItem(KID_NAME_KEY)||'kalie';kidNameEl.value=v;return v;}
-$('btnSaveKid').onclick=()=>{localStorage.setItem(KID_NAME_KEY,kidNameEl.value.trim()||'kalie');alert('已保存名字：'+(kidNameEl.value.trim()||'kalie'));};
-let passThreshold=loadThreshold(), rewardStep=loadRewardStep(), kidName=loadKidName();
-
-/* ---------- Encouragement phrases ---------- */
-const PASS_PHRASES = [
-  name=>`${name}，你做得真棒！`,
-  name=>`${name}，太厉害了！`,
-  name=>`${name}，完美通过！`,
-  name=>`${name}，真了不起！`,
-  name=>`${name}，优秀！继续保持！`
-];
-const FAIL_PHRASES = [
-  name=>`${name}，请继续努力！`,
-  name=>`${name}，再试一次你一定行！`,
-  name=>`${name}，别灰心，我们再来一遍！`,
-  name=>`${name}，加油！快要成功了！`
-];
-function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
-
-/* ---------- Core state ---------- */
-let pool=[],target='',stars=Number(localStorage.getItem('read_star_stars')||0);$('starsCount').textContent=stars;
-function loadSentences(){const saved=localStorage.getItem('read_star_sents');const text=saved||$('sentencesArea').value;pool=text.split(/\n+/).map(s=>s.trim()).filter(Boolean);}loadSentences();
-$('btnSave').onclick=()=>{localStorage.setItem('read_star_sents',$('sentencesArea').value);alert('已保存');};
-$('btnLoad').onclick=()=>{const s=localStorage.getItem('read_star_sents');if(s){$('sentencesArea').value=s;loadSentences();alert('已恢复');}};
-$('btnReset').onclick=()=>{if(confirm('清空星星？')){stars=0;localStorage.setItem('read_star_stars','0');$('starsCount').textContent=0;}};
+// --- Parent quick reset: force defaults for current language ---
+const btnResetZH = $('btnResetZH');
+const btnClearEN = $('btnClearEN');
+const btnClearZH = $('btnClearZH');
+if (btnResetZH) btnResetZH.addEventListener('click', ()=>{
+  // Reset Chinese list; reflect in editor if current selected language is Chinese
+  const curLang = (document.getElementById('langSel')?.value) || appLang;
+  localStorage.removeItem('read_star_sents_zh');
+  if (curLang === 'zh') {
+    $('sentencesArea').value = defaultSentencesZH();
+    saveSentences();
+    loadSentences();
+  }
+  alert('已恢复到中文默认30句。');
+});
+if (btnClearZH) btnClearZH.addEventListener('click', ()=>{
+  // Reset English list; reflect in editor if current selected language is English
+  const curLang = (document.getElementById('langSel')?.value) || appLang;
+  localStorage.removeItem('read_star_sents_zh');
+  if (curLang === 'zh') {
+    $('sentencesArea').value = ``;
+    saveSentences();
+  }
+  alert('中文列表已清空。');
+});
+if (btnClearEN) btnClearEN.addEventListener('click', ()=>{
+  // Reset English list; reflect in editor if current selected language is English
+  const curLang = (document.getElementById('langSel')?.value) || appLang;
+  localStorage.removeItem('read_star_sents_en');
+  if (curLang === 'en') {
+    $('sentencesArea').value = ``;
+    saveSentences();
+  }
+  alert('英文列表已清空。');
+});
+                
 
 /* ---------- Dice + next sentence (2s) ---------- */
 function rollDice(cb){
@@ -260,27 +435,35 @@ function rollDice(cb){
 }
 function nextSentence(){
   loadSentences();
-  if(pool.length===0){alert('请先添加句子');return;}
+  if(pool.length===0){alert(appLang==='en'?'Please add sentences first':'请先添加句子');return;}
   rollDice(()=>{
     target=pool[Math.floor(Math.random()*pool.length)];
-    $('sentence').childNodes[0].nodeValue = target; // keep dice element
-    $('status').textContent='请点开始朗读';
+    textOr('sentenceText', target);
+    textOr('sentenceTip', appLang==='en'?'Tap Start to read aloud':'请点开始朗读');
+    $('status').textContent=(appLang==='en'?'Tap Start to read aloud':'请点开始朗读');
     $('heard').textContent='';$('bigstar').textContent='';
     $('meter').style.width='0%';
     $('btnListen').disabled=false;$('btnStop').disabled=true;$('btnRetry').disabled=true;
   });
 }
-$('btnNext').onclick=nextSentence;
-$('btnShow').onclick=()=>{if(target) alert(target);};
+$('btnNext').addEventListener('click', nextSentence);
+$('btnShow').addEventListener('click', ()=>{if(target) alert(target);});
 
 /* ---------- Speech ---------- */
 let recognition,listening=false;
-function initReco(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){alert('浏览器不支持语音识别');return null;}const r=new SR();r.lang='zh-CN';r.interimResults=true;r.continuous=true;return r;}
-$('btnListen').onclick=()=>{
+function initReco(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){alert(appLang==='en'?'Browser does not support speech recognition.':'浏览器不支持语音识别');return null;}
+  const r=new SR();
+  r.lang = (appLang==='en'?'en-US':'zh-CN');
+  r.interimResults=true; r.continuous=true;
+  return r;
+}
+$('btnListen').addEventListener('click', ()=>{
   if(!target){nextSentence();return;}
   recognition=initReco(); if(!recognition) return;
-  kidName = (kidNameEl.value||'kalie').trim() || 'kalie';
-  $('status').textContent='正在听……';
+  const kidName = ( $('kidName') ? ($('kidName').value||'kalie').trim() : 'kalie') || 'kalie';
+  $('status').textContent=(appLang==='en'?'Listening…':'正在听……');
   $('btnListen').disabled=true;$('btnStop').disabled=false;$('btnRetry').disabled=true;
   listening=true;
   recognition.onresult=(e)=>{
@@ -290,116 +473,120 @@ $('btnListen').onclick=()=>{
   };
   recognition.onend=()=>{listening=false;};
   recognition.start();
-};
-$('btnStop').onclick=()=>{
+});
+
+$('btnStop').addEventListener('click', ()=>{
   if(recognition) recognition.stop();
   listening=false;
   $('btnStop').disabled=true;$('btnListen').disabled=false;$('btnRetry').disabled=false;
   const heard=$('heard').textContent.trim();
-  if(!heard){$('status').textContent='未识别到语音';return;}
+  if(!heard){$('status').textContent=(appLang==='en'?'No voice detected':'未识别到语音');return;}
   const sim=similarity(heard,target);
-  passThreshold=Number($('thres').value)/100; rewardStep=Number($('rewardStep').value);
-  const pass=sim>=passThreshold;
+  const th = Number(($('thres')||{value:85}).value)/100;
+  const step = Number(($('rewardStep')||{value:5}).value);
+  const pass=sim>=th;
+  const kidName = ( $('kidName') ? ($('kidName').value||'Kalie').trim() : 'Kalie') || 'Kalie';
   if(pass){
     stars+=1; localStorage.setItem('read_star_stars',String(stars)); $('starsCount').textContent=stars;
-    $('bigstar').innerHTML="<span class='ok'>⭐ 太棒了！获得一颗小红星！</span>";
-    $('status').textContent="判定完成（相似度："+Math.round(sim*100)+"%，阈值："+Math.round(passThreshold*100)+"%）";
-    const line = pick(PASS_PHRASES)(kidName);
-    speak(line);
-    if(stars % rewardStep === 0){ openReward(); }
+    $('bigstar').innerHTML="<span class='ok'>⭐ Awesome!</span>";
+    $('status').textContent=(appLang==='en'
+      ?`Done. Similarity: ${Math.round(sim*100)}%, Threshold: ${Math.round(th*100)}%`
+      :`判定完成（相似度：${Math.round(sim*100)}%，阈值：${Math.round(th*100)}%）`);
+    speakEN(pick(PASS_EN)(kidName));
+    if(stars % step === 0){ openReward(); }
   }else{
-    $('bigstar').textContent='再试一次吧～';
-    $('status').textContent="未通过（相似度："+Math.round(sim*100)+"%，阈值："+Math.round(passThreshold*100)+"%）。可以点“重试本句”。";
-    const line = pick(FAIL_PHRASES)(kidName);
-    speak(line);
+    $('bigstar').textContent='Try again~';
+    $('status').textContent=(appLang==='en'
+      ?`Not passed. Similarity: ${Math.round(sim*100)}%, Threshold: ${Math.round(th*100)}%`
+      :`未通过（相似度：${Math.round(sim*100)}%，阈值：${Math.round(th*100)}%）。可以点“重试本句”。`);
+    speakEN(pick(FAIL_EN)(kidName));
   }
-};
-$('btnRetry').onclick=()=>{
-  $('heard').textContent='';$('meter').style.width='0%';$('bigstar').textContent='';$('btnListen').click();
-};
+});
 
-/* ---------- Reward images (external & local + manifest) ---------- */
+$('btnRetry').addEventListener('click', ()=>{
+  $('heard').textContent='';$('meter').style.width='0%';$('bigstar').textContent='';$('btnListen').click();
+});
+
+$('btnReset').addEventListener('click', ()=>{
+  if(confirm(appLang==='en'?'Reset stars to 0?':'清空星星？')){
+    stars=0; localStorage.setItem('read_star_stars','0'); $('starsCount').textContent=0;
+  }
+});
+
+/* ---------- Images (external & local + manifest) ---------- */
 const IMG_LIST_KEY='read_star_reward_images';
 let rewardImages=[],rewardIdx=Number(localStorage.getItem('read_star_reward_index')||0);
-function loadImages(){try{rewardImages=JSON.parse(localStorage.getItem(IMG_LIST_KEY)||'[]');}catch(e){rewardImages=[];}renderImgList();}
-function saveImages(){localStorage.setItem(IMG_LIST_KEY,JSON.stringify(rewardImages));renderImgList();}
-function renderImgList(){
-  const ul=$('imgList'); ul.innerHTML='';
-  if(rewardImages.length===0){const li=document.createElement('li'); li.textContent='尚未添加图片。请添加链接或上传本地图片，或点击“从目录清单载入”。'; ul.appendChild(li); return;}
+function renderImgListGeneric(ulId){
+  const ul=$(ulId); ul.innerHTML='';
+  if(rewardImages.length===0){const li=document.createElement('li'); li.textContent=(appLang==='en'?'No images yet. Use parent settings to add.':'尚未添加图片。请在家长设置中添加。'); ul.appendChild(li); return;}
   rewardImages.forEach((src,i)=>{
     const li=document.createElement('li'); const img=new Image(); img.src=src; img.className='thumb';
-    const del=document.createElement('button'); del.textContent='删除'; del.className='secondary'; del.onclick=()=>{rewardImages.splice(i,1); saveImages();};
+    const del=document.createElement('button'); del.textContent=(appLang==='en'?'Delete':'删除'); del.className='secondary'; del.onclick=()=>{rewardImages.splice(i,1); saveImages();};
     const span=document.createElement('span'); span.textContent=src.slice(0,60)+(src.length>60?'…':'');
     li.appendChild(img); li.appendChild(span); li.appendChild(del); ul.appendChild(li);
   });
 }
-$('btnAddUrl').onclick=()=>{const url=$('imgUrl').value.trim(); if(!url) return; rewardImages.push(url); $('imgUrl').value=''; saveImages();};
-$('btnAddFile').onclick=()=>{
+function renderImgList(){ renderImgListGeneric('imgList'); renderImgListGeneric('imgListParent'); }
+function loadImages(){
+  try{rewardImages=JSON.parse(localStorage.getItem(IMG_LIST_KEY)||'[]');}catch(e){rewardImages=[];}
+  renderImgList();
+}
+function saveImages(){ localStorage.setItem(IMG_LIST_KEY,JSON.stringify(rewardImages)); renderImgList(); }
+$('btnAddUrl').addEventListener('click', ()=>{const url=$('imgUrl').value.trim(); if(!url) return; rewardImages.push(url); $('imgUrl').value=''; saveImages();});
+$('btnAddFile').addEventListener('click', ()=>{
   const f=$('imgFile').files[0]; if(!f) return;
   const reader=new FileReader(); reader.onload=()=>{rewardImages.push(reader.result); saveImages(); $('imgFile').value='';}; reader.readAsDataURL(f);
-};
-$('btnLoadManifest').onclick=async ()=>{
-  // Try reward_images.json then reward_images.txt
-  async function tryJson(){
-    try{
-      const res = await fetch('reward_images.json', {cache:'no-store'});
-      if(!res.ok) return false;
-      const arr = await res.json();
-      if(Array.isArray(arr)){
-        arr.forEach(p=>{ if(typeof p==='string'){ rewardImages.push(p); } });
-        saveImages(); return true;
-      }
-    }catch(e){}
-    return false;
-  }
-  async function tryTxt(){
-    try{
-      const res = await fetch('reward_images.txt', {cache:'no-store'});
-      if(!res.ok) return false;
-      const txt = await res.text();
-      txt.split(/\r?\n/).map(s=>s.trim()).filter(Boolean).forEach(p=>rewardImages.push(p));
-      saveImages(); return true;
-    }catch(e){}
-    return false;
-  }
+});
+$('btnLoadManifest').addEventListener('click', async ()=>{
+  async function tryJson(){ try{ const res=await fetch('reward_images.json',{cache:'no-store'}); if(!res.ok) return false; const arr=await res.json(); if(Array.isArray(arr)){ arr.forEach(p=>{ if(typeof p==='string'){ rewardImages.push(p); } }); saveImages(); return true; } }catch(e){} return false; }
+  async function tryTxt(){ try{ const res=await fetch('reward_images.txt',{cache:'no-store'}); if(!res.ok) return false; const txt=await res.text(); txt.split(/\r?\n/).map(s=>s.trim()).filter(Boolean).forEach(p=>rewardImages.push(p)); saveImages(); return true; }catch(e){} return false; }
   const ok = await tryJson() || await tryTxt();
-  if(!ok) alert('未找到 reward_images.json / reward_images.txt，或文件格式不正确。请将清单文件与本HTML放在同一目录。');
-};
+  if(!ok) alert(appLang==='en'?'Manifest not found or invalid.':'未找到清单文件或格式不正确。');
+});
 loadImages();
 
 /* ---------- Reward modal with gallery, undo, wheel/pinch zoom ---------- */
-function openReward(){ if(rewardImages.length===0){alert('还没有添加奖励图片');return;} showReward(); }
-$('btnColorNow').onclick=openReward;
+function openReward(){ if(rewardImages.length===0){alert(appLang==='en'?'No images yet.':'还没有添加奖励图片');return;} showReward(); }
+$('btnColorNow').addEventListener('click', openReward);
 
 function showReward(){
-  const modal=$('rewardModal'); modal.style.display='flex'; modal.setAttribute('aria-hidden','false');
+  const modal=$('rewardModal'); modal.style.display='flex'; modal.style.zIndex=110; modal.setAttribute('aria-hidden','false');
   const view=$('view'); const vctx=view.getContext('2d');
   const base=document.createElement('canvas'); base.width=1400; base.height=1050; const bctx=base.getContext('2d');
   const img=new Image(); img.crossOrigin='anonymous';
   const corsWarn=$('corsWarn'); corsWarn.style.display='none';
 
+  // state
+  let curColor='#ff7f00';
+  let mode='bucket';
+  let zoom=1, panX=0, panY=0;
+  let drawing=false, last=null;
+
   // Undo stack
   const undoStack=[];
   function snapshot(){ try{ undoStack.push(bctx.getImageData(0,0,base.width,base.height)); if(undoStack.length>20) undoStack.shift(); }catch(e){} }
-  function undo(){ if(undoStack.length){ const last=undoStack.pop(); bctx.putImageData(last,0,0); drawView(); } }
-
-  // paint state
-  let curColor='#ff7f00'; let mode='paint'; let drawing=false;
-  let zoom=1, panX=0, panY=0;
+  function undo(){ if(undoStack.length){ const lastSnap=undoStack.pop(); bctx.putImageData(lastSnap,0,0); drawView(); } }
+  $('undoBtn').onclick=undo;
 
   // UI init
   const brush=$('brush'), brushSize=$('brushSize'); brush.oninput=()=>brushSize.textContent=brush.value; brush.dispatchEvent(new Event('input'));
   const tol=$('tol'), tolVal=$('tolVal'); tol.oninput=()=>tolVal.textContent=tol.value; tol.dispatchEvent(new Event('input'));
   const colors=['#000000','#3e2723','#795548','#9e9e9e','#ffffff','#ff1744','#ff8a80','#ff6d00','#ffeb3b','#cddc39','#00c853','#4caf50','#00bcd4','#2196f3','#3f51b5','#9c27b0','#e91e63'];
   const palette=$('palette'); palette.innerHTML=''; colors.forEach(c=>{const sw=document.createElement('div'); sw.className='swatch'; sw.style.background=c; sw.title=c; sw.onclick=()=>{curColor=c;}; palette.appendChild(sw);});
-  const setMode=(m)=>{mode=m; $('toolPaint').className=(m==='paint'?'on':'off'); $('toolBucket').className=(m==='bucket'?'on':'off'); $('toolPan').className=(m==='pan'?'on':'off');};
+  function setMode(m){
+    mode=m;
+    ['toolPaint','toolBucket','toolPan'].forEach(id=>$(id).classList.remove('on'));
+    if(m==='paint') $('toolPaint').classList.add('on');
+    if(m==='bucket') $('toolBucket').classList.add('on');
+    if(m==='pan') $('toolPan').classList.add('on');
+  }
   $('toolPaint').onclick=()=>setMode('paint'); $('toolBucket').onclick=()=>setMode('bucket'); $('toolPan').onclick=()=>setMode('pan');
   $('zoom').oninput=(e)=>{zoom=Number(e.target.value)/100; drawView();};
   $('zoomIn').onclick=()=>{const z=Math.min(200, Number($('zoom').value)+10); $('zoom').value=z; zoom=z/100; drawView();};
   $('zoomOut').onclick=()=>{const z=Math.max(50, Number($('zoom').value)-10); $('zoom').value=z; zoom=z/100; drawView();};
   $('fit').onclick=()=>{$('zoom').value=100; zoom=1; panX=0; panY=0; drawView();};
 
-  // Build gallery
+  // Gallery
   const gallery=$('gallery');
   function buildGallery(activeIndex){
     gallery.innerHTML='';
@@ -413,7 +600,7 @@ function showReward(){
     });
   }
 
-  // Coordinate transforms
+  // Transforms
   function viewToBase(x,y){
     const dx=(view.width - base.width*zoom)/2 + panX;
     const dy=(view.height - base.height*zoom)/2 + panY;
@@ -440,8 +627,16 @@ function showReward(){
     bctx.drawImage(img, dx, dy, dw, dh);
   }
 
-  // Brush drawing
-  let last=null;
+  // Helpers for input
+  function getPos(e){
+    const r=view.getBoundingClientRect();
+    const vx = (e.touches? e.touches[0].clientX : e.clientX) - r.left;
+    const vy = (e.touches? e.touches[0].clientY : e.clientY) - r.top;
+    const sx = vx * view.width/r.width, sy = vy * view.height/r.height;
+    return viewToBase(sx, sy);
+  }
+
+  // Drawing handlers
   function start(e){
     drawing=true; last=getPos(e);
     if(mode==='paint'){ snapshot(); bctx.beginPath(); bctx.moveTo(last.x,last.y); }
@@ -451,7 +646,7 @@ function showReward(){
     if(!drawing) return;
     const p=getPos(e);
     if(mode==='paint'){
-      bctx.lineWidth=Number(brush.value);
+      bctx.lineWidth=Number($('brush').value);
       bctx.lineCap='round'; bctx.lineJoin='round';
       bctx.strokeStyle=curColor; bctx.globalAlpha=1;
       bctx.lineTo(p.x,p.y); bctx.stroke();
@@ -469,15 +664,6 @@ function showReward(){
     e.preventDefault();
   }
   function end(){ drawing=false; }
-
-  // Helpers
-  function getPos(e){
-    const r=view.getBoundingClientRect();
-    const vx = (e.touches? e.touches[0].clientX : e.clientX) - r.left;
-    const vy = (e.touches? e.touches[0].clientY : e.clientY) - r.top;
-    const sx = vx * view.width/r.width, sy = vy * view.height/r.height;
-    return viewToBase(sx, sy);
-  }
 
   // Bucket fill
   function colorAt(data, x, y, w){const i=(y*w + x)*4; return [data[i],data[i+1],data[i+2],data[i+3]];}
@@ -511,10 +697,14 @@ function showReward(){
     drawView();
   }
 
-  // Right-click undo
+  // Bind interactions
   view.oncontextmenu = (e)=>{ e.preventDefault(); undo(); };
+  view.onmousedown = (e)=>{ if(e.button===2){return;} if(mode==='bucket'){ const p=getPos(e); bucketFill(p.x,p.y,curColor,$('tol').value); } else { start(e); } };
+  view.onmousemove = move; window.onmouseup = end;
+  view.ontouchstart = (e)=>{ if(e.touches.length===1){ if(mode==='bucket'){ const p=getPos(e); bucketFill(p.x,p.y,curColor,$('tol').value); } else { start(e); } } };
+  view.ontouchmove = move; window.ontouchend = end;
 
-  // Wheel zoom (centered on cursor)
+  // Wheel zoom
   view.addEventListener('wheel', (e)=>{
     e.preventDefault();
     const delta = e.deltaY < 0 ? 1.1 : 0.9;
@@ -532,7 +722,7 @@ function showReward(){
     drawView();
   }, {passive:false});
 
-  // Pinch zoom (two fingers)
+  // Pinch zoom
   let pinchStartDist = 0, pinchStartZoom = 1, pinchStartMid = null;
   function distance(t1,t2){ const dx=t1.clientX - t2.clientX, dy=t1.clientY - t2.clientY; return Math.hypot(dx,dy); }
   function midpoint(t1,t2){ return {x:(t1.clientX+t2.clientX)/2, y:(t1.clientY+t2.clientY)/2}; }
@@ -564,33 +754,97 @@ function showReward(){
     if(e.touches.length<2){ pinchStartDist=0; pinchStartMid=null; }
   });
 
-  // Interactions
-  view.onmousedown = (e)=>{ if(e.button===2){return;} if(mode==='bucket'){ const p=getPos(e); bucketFill(p.x,p.y,curColor,$('tol').value); } else { start(e); } };
-  view.onmousemove = move; window.onmouseup = end;
-  view.ontouchstart = (e)=>{ if(e.touches.length===1){ if(mode==='bucket'){ const p=getPos(e); bucketFill(p.x,p.y,curColor,$('tol').value); } else { start(e); } } };
-  view.ontouchmove = move; window.ontouchend = end;
-
+  // Commands
   $('btnClear').onclick=()=>{ snapshot(); clearToImage(); drawView(); };
   $('btnSaveImg').onclick=()=>{
-    try{ const a=document.createElement('a'); a.href=base.toDataURL('image/png'); a.download='我的涂色.png'; a.click(); }
-    catch(err){ corsWarn.style.display='block'; alert('图片源未允许跨域，无法保存 PNG。建议上传本地图片或使用同域/允许 CORS 的图片地址。'); }
+    try{ const a=document.createElement('a'); a.href=base.toDataURL('image/png'); a.download='coloring.png'; a.click(); }
+    catch(err){ corsWarn.style.display='block'; alert(appLang==='en'?'Cross-origin blocked. Use local upload for saving.':'图片源未允许跨域，无法保存 PNG。建议上传本地图片或使用同域/允许 CORS 的图片地址。'); }
   };
   $('btnClose').onclick=()=>{ modal.style.display='none'; modal.setAttribute('aria-hidden','true'); };
 
-  // Load image by index & build gallery
   function loadImage(i){
     const src=rewardImages[i % rewardImages.length];
-    img.onload=()=>{ clearToImage(); undoStack.length=0; drawView(); };
-    img.onerror=()=>{ corsWarn.style.display='block'; bctx.fillStyle='#fff'; bctx.fillRect(0,0,base.width,base.height); undoStack.length=0; drawView(); };
+    img.onload=()=>{ clearToImage(); undoStack.length=0; drawView(); setMode('bucket'); };
+    img.onerror=()=>{ corsWarn.style.display='block'; bctx.fillStyle='#fff'; bctx.fillRect(0,0,base.width,base.height); undoStack.length=0; drawView(); setMode('bucket'); };
     img.src=src;
     $('zoom').value=100; zoom=1; panX=0; panY=0;
   }
-  buildGallery(rewardIdx % rewardImages.length);
-  loadImage(rewardIdx % rewardImages.length);
+  function buildAndLoad(){
+    const active=rewardIdx % rewardImages.length;
+    buildGallery(active);
+    loadImage(active);
+  }
+  buildAndLoad();
 }
 
-/* Quick entry to color */
-$('btnColorNow').onclick=openReward;
+/* ---------- Parent-only: edit sentences visibility ---------- */
+$('btnEditSentences').addEventListener('click', ()=>{
+  const ta=$('sentencesArea');
+  ta.style.display = (ta.style.display==='none'?'block':'none');
+});
+$('btnCloseParent').addEventListener('click', ()=>{ saveSentences(); parentModal.style.display='none'; });
+
+/* ---------- i18n apply ---------- */
+function applyI18n(){
+  const m = I18N[appLang];
+  textOr('btnResetZH', m.btnResetZH);
+  textOr('btnClearEN', m.btnClearEN);
+  textOr('btnClearZH', m.btnClearZH);
+  textOr('titleH1', m.title);
+  textOr('langLabel', m.langLabel);
+  textOr('parentBtnText', m.parentBtn);
+  textOr('scoreLabel', m.scoreLabel);
+  textOr('recHint', m.recHint);
+  textOr('browserHint', m.browserHint);
+  textOr('rewardHint', m.rewardHint);
+  textOr('sentenceTip', m.sentenceTip);
+  textOr('btnNext', m.btnNext);
+  textOr('btnListen', m.btnListen);
+  textOr('btnStop', m.btnStop);
+  textOr('btnRetry', m.btnRetry);
+  textOr('btnShow', m.btnShow);
+  textOr('btnColorNow', m.btnColorNow);
+  textOr('btnReset', m.btnReset);
+  textOr('sentencesSummary', m.sentencesSummary);
+  textOr('sentencesHint', m.sentencesHint);
+  textOr('imagesSummary', m.imagesSummary);
+  textOr('imagesHint', m.imagesHint);
+  textOr('parentTitle', m.parentTitle);
+  textOr('pinLabel', m.pinLabel);
+  textOr('pinOk', m.pinOk);
+  textOr('pinCancel', m.pinCancel);
+  textOr('thresLabel', m.thresLabel);
+  textOr('btnThresReset', m.btnThresReset);
+  textOr('rewardStepLabel', m.rewardStepLabel);
+  textOr('btnRewardReset', m.btnRewardReset);
+  textOr('kidNameLabel', m.kidNameLabel);
+  textOr('btnSaveKid', m.btnSaveKid);
+  textOr('langSelLabel', m.langSelLabel);
+  textOr('langHint', m.langHint);
+  textOr('manifestHint', m.manifestHint);
+  textOr('btnAddUrl', m.btnAddUrl);
+  textOr('btnAddFile', m.btnAddFile);
+  textOr('btnLoadManifest', m.btnLoadManifest);
+  textOr('btnEditSentences', m.btnEditSentences);
+  textOr('btnCloseParent', m.btnCloseParent);
+  textOr('rewardTitle', m.rewardTitle);
+  textOr('brushLabel', m.brushLabel);
+  textOr('tolLabel', m.tolLabel);
+  textOr('viewLabel', m.viewLabel);
+  textOr('fit', m.fit);
+  textOr('toolPaint', m.toolPaint);
+  textOr('toolBucket', m.toolBucket);
+  textOr('toolPan', m.toolPan);
+  textOr('undoBtn', m.undoBtn);
+  textOr('btnClear', m.btnClear);
+  textOr('btnSaveImg', m.btnSaveImg);
+  textOr('btnClose', m.btnClose);
+  textOr('corsWarn', m.corsWarn);
+  textOr('rewardUnit', m.rewardUnit);
+  textOr('langShow', (appLang==='en'?'English':'中文'));
+  document.documentElement.lang = (appLang==='en'?'en':'zh-CN');
+}
+applyI18n();
 </script>
 </body>
 </html>
