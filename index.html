@@ -3,17 +3,19 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>朗读小红星（3秒自动判定+语音鼓励版）</title>
+  <title>朗读小红星（2s骰子动画 + 目录清单自动载图 + 命名语音鼓励）</title>
   <style>
     html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Helvetica Neue",Arial,"Noto Sans CJK SC",sans-serif;background:#fafafa;color:#222}
-    .wrap{max-width:900px;margin:0 auto;padding:24px}
+    .wrap{max-width:1100px;margin:0 auto;padding:18px}
     h1{font-size:22px;margin:0 0 12px}
-    .card{background:#fff;border:1px solid #eee;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.04);padding:16px;margin-bottom:16px}
-    .sentence{font-size:24px;line-height:1.6;padding:12px 0;min-height:3.2em}
+    .card{background:#fff;border:1px solid #eee;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.04);padding:14px;margin-bottom:14px}
+    .sentence{font-size:24px;line-height:1.6;padding:12px 0;min-height:3.2em;position:relative}
     .btns{display:flex;gap:8px;flex-wrap:wrap}
     button{border:0;border-radius:10px;padding:10px 14px;font-size:16px;cursor:pointer;background:#2b7cff;color:#fff}
     button.secondary{background:#eee;color:#222}
     button.warn{background:#ff7b2b}
+    button.success{background:#16a34a}
+    button.ghost{background:#f5f5f5;color:#222}
     button:disabled{opacity:.5;cursor:not-allowed}
     .status{font-size:14px;color:#555;margin-top:6px;min-height:1.4em}
     .heard{font-size:18px;color:#333;background:#f7f7f7;border-radius:8px;padding:8px 10px;word-break:break-all}
@@ -23,28 +25,83 @@
     .meter>div{height:100%;background:#2b7cff;width:0%}
     details summary{cursor:pointer;font-weight:600}
     textarea{width:100%;min-height:180px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:14px;line-height:1.6}
-    label{font-size:14px;color:#555}
     .pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#f0f0f0;margin-right:6px}
-    .footer{font-size:12px;color:#777;margin-top:10px}
     .flex{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
     .scorebox{font-size:16px}
-    .small{font-size:12px;color:#666}
+    .badge{background:#f0f0ff;border:1px solid #e0e0ff;border-radius:999px;padding:2px 8px}
+    input[type=text]{padding:8px;border:1px solid #ddd;border-radius:8px;min-width:180px}
+    ul{list-style:none;padding:0;margin:0}
+    li{display:flex;align-items:center;gap:8px;margin:6px 0}
+    .thumb{width:80px;height:60px;object-fit:cover;border:1px solid #ddd;border-radius:6px;background:#f8f8f8}
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;padding:16px;z-index:99}
+    .modal .panel{background:#fff;border-radius:16px;max-width:980px;width:100%;padding:12px 12px 16px;box-shadow:0 8px 24px rgba(0,0,0,.2)}
+    .panel h2{margin:8px 0 8px;font-size:18px}
+    .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0 10px}
+    .toolbar input[type=range]{width:120px}
+    .canvas-wrap{width:100%;aspect-ratio:4/3;border:1px dashed #ddd;border-radius:12px;overflow:hidden;background:#fff;position:relative}
+    .view{width:100%;height:100%;display:block;touch-action:none}
+    .swatch{width:24px;height:24px;border-radius:50%;border:1px solid #ccc;cursor:pointer}
+    .hint{font-size:12px;color:#666}
+    .warnnote{font-size:12px;color:#aa0000}
+    .tooltoggle .on{background:#2b7cff;color:#fff}
+    .tooltoggle .off{background:#f0f0f0;color:#333}
+    .gallery{display:flex;gap:8px;overflow:auto;padding:8px 0}
+    .gitem{flex:0 0 auto;border:2px solid transparent;border-radius:10px;padding:2px;cursor:pointer;background:#fff}
+    .gitem.active{border-color:#2b7cff}
+    .gitem img{display:block;width:120px;height:90px;object-fit:cover;border-radius:8px}
+    .note{font-size:12px;color:#666;margin-left:6px}
+    /* 🎲 Dice animation 2s */
+    .dice{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:52px;height:52px;border-radius:10px;background:#fff;border:2px solid #333;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none}
+    .dot{width:8px;height:8px;background:#333;border-radius:50%;position:absolute}
+    .dot.c{left:50%;top:50%;transform:translate(-50%,-50%)}
+    .dot.tl{left:12px;top:12px}.dot.tr{right:12px;top:12px}
+    .dot.bl{left:12px;bottom:12px}.dot.br{right:12px;bottom:12px}
+    .dot.ml{left:12px;top:50%;transform:translateY(-50%)}.dot.mr{right:12px;top:50%;transform:translateY(-50%)}
+    .rolling{animation:roll 2s ease-in-out both}
+    @keyframes roll{
+      0%{opacity:1;transform:translate(-50%,-50%) rotate(0) scale(1)}
+      25%{transform:translate(calc(-50% - 10px),calc(-50% - 8px)) rotate(120deg) scale(1.1)}
+      50%{transform:translate(calc(-50% + 12px),calc(-50% + 6px)) rotate(260deg) scale(0.95)}
+      75%{transform:translate(calc(-50% - 6px),calc(-50% + 4px)) rotate(320deg) scale(1.05)}
+      100%{opacity:0;transform:translate(-50%,-50%) rotate(360deg) scale(1)}
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>🎤 朗读小红星（3秒自动判定+语音鼓励版）</h1>
+    <h1>🎤 朗读小红星（2s骰子动画 + 目录清单自动载图 + 命名语音鼓励）</h1>
+
     <div class="card">
       <div class="flex">
         <div class="scorebox">⭐ 已获红星：<span id="starsCount">0</span></div>
         <span class="pill">识别语言：中文（普通话）</span>
-        <span class="pill">建议浏览器：Chrome / Edge（HTTPS 下免重复授权）</span>
+        <span class="pill">建议浏览器：Chrome / Edge（HTTPS 更稳定）</span>
+        <span class="badge">奖励：每满 N 星弹出涂色</span>
       </div>
-      <div class="sentence" id="sentence">点“抽一句”开始</div>
+      <div class="row">
+        <label>判定阈值：<input id="thres" type="range" min="70" max="98" value="85"> <span id="thresVal">85</span>%</label>
+        <button id="btnThresReset" class="secondary">阈值复位 85%</button>
+        <label>奖励阈值（每 N 星）：<input id="rewardStep" type="range" min="1" max="20" value="5"> <span id="rewardVal">5</span> 星</label>
+        <button id="btnRewardReset" class="secondary">奖励复位 5 星</button>
+        <label>小朋友名字：<input id="kidName" type="text" placeholder="kalie" value="kalie"></label>
+        <button id="btnSaveKid" class="secondary">保存名字</button>
+      </div>
+
+      <div class="sentence" id="sentence">点“抽一句”开始
+        <div id="dice" class="dice">
+          <div class="dot tl"></div><div class="dot tr"></div>
+          <div class="dot ml"></div><div class="dot c"></div><div class="dot mr"></div>
+          <div class="dot bl"></div><div class="dot br"></div>
+        </div>
+      </div>
       <div class="btns">
         <button id="btnNext">🎲 抽一句</button>
         <button id="btnListen" class="warn" disabled>🎙️ 开始朗读</button>
+        <button id="btnStop" class="success" disabled>⏹️ 结束判定</button>
+        <button id="btnRetry" class="secondary" disabled>🔁 重试本句</button>
         <button id="btnShow" class="secondary">👀 显示答案</button>
+        <button id="btnColorNow" class="secondary">🎨 去涂色</button>
         <button id="btnReset" class="secondary">🗑️ 清空星星</button>
       </div>
       <div class="status" id="status">—</div>
@@ -54,7 +111,7 @@
     </div>
 
     <div class="card">
-      <details>
+      <details open>
         <summary>📚 句子列表（可编辑）</summary>
         <textarea id="sentencesArea">胖娃娃的脏衣服掉进水里了，小袋鼠看见就笑了。
 小鸭子爬不上路边的桃树，只好在树底下走来走去。
@@ -89,139 +146,451 @@
         <div class="btns">
           <button id="btnSave" class="secondary">💾 保存列表</button>
           <button id="btnLoad" class="secondary">↩️ 恢复上次保存</button>
-          <label><input type="checkbox" id="strict"> 使用严格模式（≥95%）</label>
         </div>
+      </details>
+    </div>
+
+    <div class="card">
+      <details open>
+        <summary>🖼️ 奖励涂色图片（支持网络链接 / 本地上传 / 目录清单自动加载）</summary>
+        <div class="row">
+          <input type="text" id="imgUrl" placeholder="粘贴网络图片地址（允许CORS最佳）">
+          <button id="btnAddUrl" class="secondary">添加网络图片</button>
+          <input type="file" id="imgFile" accept="image/*">
+          <button id="btnAddFile" class="secondary">上传本地图片</button>
+          <button id="btnLoadManifest" class="secondary">从目录清单载入</button>
+        </div>
+        <div class="hint">
+          目录清单规则：在本 HTML 同目录放一个
+          <code>reward_images.json</code>（如 <code>["img1.png","img2.jpg"]</code>）或
+          <code>reward_images.txt</code>（每行一个文件名/URL）。
+          GitHub Pages 会按文件名静态提供，但浏览器无法自动“列目录”，因此需要这个清单文件。
+        </div>
+        <ul id="imgList"></ul>
       </details>
     </div>
   </div>
 
+  <!-- Reward modal -->
+  <div class="modal" id="rewardModal" aria-hidden="true">
+    <div class="panel">
+      <h2>🎁 选择要涂色的图片，然后开始上色 <span class="note">（右键撤销；滚轮/双指缩放；拖动平移）</span></h2>
+      <div id="gallery" class="gallery"></div>
+      <div class="toolbar">
+        <div>画笔：<input type="range" id="brush" min="2" max="48" value="16"> <span id="brushSize">16</span> px</div>
+        <div class="row">
+          <span>填充容差：</span><input type="range" id="tol" min="0" max="60" value="20"><span id="tolVal">20</span>
+        </div>
+        <div id="palette" class="row"></div>
+        <div class="row toolline">
+          <span>视图：</span>
+          <button id="zoomOut" class="ghost">-</button>
+          <input type="range" id="zoom" min="50" max="200" value="100">
+          <button id="zoomIn" class="ghost">+</button>
+          <button id="fit" class="ghost">适配</button>
+          <span class="tooltoggle">
+            <button id="toolPaint" class="on">🖌️画笔</button>
+            <button id="toolBucket" class="off">🪣颜料桶</button>
+            <button id="toolPan" class="off">🖐️移动</button>
+          </span>
+        </div>
+        <div class="row">
+          <button id="btnClear" class="secondary">清除所有改动</button>
+          <button id="btnSaveImg" class="secondary">保存到相册</button>
+          <button id="btnClose">完成</button>
+        </div>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="view" class="view" width="1400" height="1050"></canvas>
+      </div>
+      <div id="corsWarn" class="warnnote" style="display:none;">提示：当前图片来源不支持跨域，仍可涂色，但可能无法保存为 PNG。</div>
+    </div>
+  </div>
+
 <script>
-const zhNormalize = s => s.toLowerCase().replace(/[，,。\.！!？\?；;：“”"『』「」\(\)\[\]—\-、·…\s]/g,'');
-function levenshtein(a,b){
-  const an=a.length,bn=b.length; if(an===0) return bn; if(bn===0) return an;
-  const v0=new Array(bn+1).fill(0), v1=new Array(bn+1).fill(0);
-  for(let i=0;i<=bn;i++) v0[i]=i;
-  for(let i=0;i<an;i++){
-    v1[0]=i+1;
-    for(let j=0;j<bn;j++){
-      const cost=a[i]===b[j]?0:1;
-      v1[j+1]=Math.min(v1[j]+1,v0[j+1]+1,v0[j]+cost);
-    }
-    for(let j=0;j<=bn;j++) v0[j]=v1[j];
-  }
-  return v1[bn];
-}
-const similarity = (a,b) => {
-  const A=zhNormalize(a),B=zhNormalize(b);
-  if(!A && !B) return 1;
-  return 1 - levenshtein(A,B)/Math.max(A.length,B.length);
-};
-
-function speak(text){
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.lang = "zh-CN";
-  speechSynthesis.speak(utter);
-}
-
+/* ---------- Utils ---------- */
 const $ = id => document.getElementById(id);
-let pool=[],target="",stars=Number(localStorage.getItem("read_star_stars")||0);
-$("starsCount").textContent=stars;
-function loadSentences(){
-  const saved=localStorage.getItem("read_star_sents");
-  const text=saved || $("sentencesArea").value;
-  pool=text.split(/\n+/).map(s=>s.trim()).filter(Boolean);
-}
-loadSentences();
-$("btnSave").onclick=()=>{localStorage.setItem("read_star_sents",$("sentencesArea").value);alert("已保存");};
-$("btnLoad").onclick=()=>{const s=localStorage.getItem("read_star_sents");if(s){$("sentencesArea").value=s;loadSentences();alert("已恢复");}};
-$("btnReset").onclick=()=>{if(confirm("清空星星？")){stars=0;localStorage.setItem("read_star_stars","0");$("starsCount").textContent=0;}};
+const zhNormalize = s => s.toLowerCase().replace(/[，,。\.！!？\?；;：“”"『』「」\(\)\[\]—\-、·…\s]/g,'');
+function levenshtein(a,b){const an=a.length,bn=b.length;if(an===0)return bn;if(bn===0)return an;const v0=new Array(bn+1).fill(0),v1=new Array(bn+1).fill(0);for(let i=0;i<=bn;i++)v0[i]=i;for(let i=0;i<an;i++){v1[0]=i+1;for(let j=0;j<bn;j++){const cost=a[i]===b[j]?0:1;v1[j+1]=Math.min(v1[j]+1,v0[j+1]+1,v0[j]+cost);}for(let j=0;j<=bn;j++)v0[j]=v1[j];}return v1[bn];}
+const similarity=(a,b)=>{const A=zhNormalize(a),B=zhNormalize(b);if(!A&&!B)return 1;return 1-levenshtein(A,B)/Math.max(A.length,B.length);};
+function speak(text){if(!('speechSynthesis'in window))return;const u=new SpeechSynthesisUtterance(text);u.lang='zh-CN';speechSynthesis.speak(u);}
 
+/* ---------- Settings: thresholds, reward step, kid name ---------- */
+const THRES_KEY='read_star_threshold', REWARD_STEP_KEY='read_star_reward_step', KID_NAME_KEY='read_star_kid_name';
+const thresEl=$('thres'), thresVal=$('thresVal');
+const rewardEl=$('rewardStep'), rewardVal=$('rewardVal');
+const kidNameEl=$('kidName');
+function loadThreshold(){const v=Number(localStorage.getItem(THRES_KEY));const t=(isNaN(v)||v<70||v>98)?85:v;thresEl.value=t;thresVal.textContent=t;return t/100;}
+function saveThreshold(){thresVal.textContent=thresEl.value;localStorage.setItem(THRES_KEY,thresEl.value);}
+thresEl.oninput=saveThreshold;$('btnThresReset').onclick=()=>{thresEl.value=85;saveThreshold();};
+function loadRewardStep(){const v=Number(localStorage.getItem(REWARD_STEP_KEY));const t=(isNaN(v)||v<1||v>20)?5:v;rewardEl.value=t;rewardVal.textContent=t;return t;}
+function saveRewardStep(){rewardVal.textContent=rewardEl.value;localStorage.setItem(REWARD_STEP_KEY,rewardEl.value);}
+rewardEl.oninput=saveRewardStep;$('btnRewardReset').onclick=()=>{rewardEl.value=5;saveRewardStep();};
+function loadKidName(){const v=localStorage.getItem(KID_NAME_KEY)||'kalie';kidNameEl.value=v;return v;}
+$('btnSaveKid').onclick=()=>{localStorage.setItem(KID_NAME_KEY,kidNameEl.value.trim()||'kalie');alert('已保存名字：'+(kidNameEl.value.trim()||'kalie'));};
+let passThreshold=loadThreshold(), rewardStep=loadRewardStep(), kidName=loadKidName();
+
+/* ---------- Encouragement phrases ---------- */
+const PASS_PHRASES = [
+  name=>`${name}，你做得真棒！`,
+  name=>`${name}，太厉害了！`,
+  name=>`${name}，完美通过！`,
+  name=>`${name}，真了不起！`,
+  name=>`${name}，优秀！继续保持！`
+];
+const FAIL_PHRASES = [
+  name=>`${name}，请继续努力！`,
+  name=>`${name}，再试一次你一定行！`,
+  name=>`${name}，别灰心，我们再来一遍！`,
+  name=>`${name}，加油！快要成功了！`
+];
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+/* ---------- Core state ---------- */
+let pool=[],target='',stars=Number(localStorage.getItem('read_star_stars')||0);$('starsCount').textContent=stars;
+function loadSentences(){const saved=localStorage.getItem('read_star_sents');const text=saved||$('sentencesArea').value;pool=text.split(/\n+/).map(s=>s.trim()).filter(Boolean);}loadSentences();
+$('btnSave').onclick=()=>{localStorage.setItem('read_star_sents',$('sentencesArea').value);alert('已保存');};
+$('btnLoad').onclick=()=>{const s=localStorage.getItem('read_star_sents');if(s){$('sentencesArea').value=s;loadSentences();alert('已恢复');}};
+$('btnReset').onclick=()=>{if(confirm('清空星星？')){stars=0;localStorage.setItem('read_star_stars','0');$('starsCount').textContent=0;}};
+
+/* ---------- Dice + next sentence (2s) ---------- */
+function rollDice(cb){
+  const d=$('dice'); d.classList.add('rolling'); d.style.opacity=1;
+  setTimeout(()=>{ d.classList.remove('rolling'); d.style.opacity=0; cb&&cb(); }, 2000);
+}
 function nextSentence(){
   loadSentences();
-  if(pool.length===0){alert("请先添加句子");return;}
-  target=pool[Math.floor(Math.random()*pool.length)];
-  $("sentence").textContent=target;
-  $("status").textContent="请点开始朗读";
-  $("heard").textContent="";$("bigstar").textContent="";
-  $("meter").style.width="0%";
-  $("btnListen").disabled=false;
-}
-$("btnNext").onclick=nextSentence;
-$("btnShow").onclick=()=>{if(target) alert(target);};
-
-let recognition,listening=false, audioStream, audioContext, analyser, dataArray, silenceStart, lastResultTime;
-function initReco(){
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR){alert("浏览器不支持语音识别");return null;}
-  const r=new SR();
-  r.lang="zh-CN"; r.interimResults=true; r.continuous=true;
-  return r;
-}
-function startListen(){
-  if(!target){nextSentence(); return;}
-  recognition=initReco(); if(!recognition) return;
-  $("status").textContent="正在听……";
-  $("btnListen").disabled=true;
-  listening=true; silenceStart=null; lastResultTime=Date.now();
-  recognition.onresult=(e)=>{
-    lastResultTime=Date.now();
-    let buf="";
-    for(let i=e.resultIndex;i<e.results.length;i++){buf+=e.results[i][0].transcript;}
-    $("heard").textContent=buf;
-    const sim=similarity(buf,target);
-    $("meter").style.width=Math.round(sim*100)+"%";
-  };
-  recognition.start();
-  navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
-    audioStream=stream;
-    audioContext=new AudioContext();
-    analyser=audioContext.createAnalyser();
-    const source=audioContext.createMediaStreamSource(stream);
-    analyser.fftSize=256;
-    dataArray=new Uint8Array(analyser.frequencyBinCount);
-    source.connect(analyser);
-    checkVolume();
+  if(pool.length===0){alert('请先添加句子');return;}
+  rollDice(()=>{
+    target=pool[Math.floor(Math.random()*pool.length)];
+    $('sentence').childNodes[0].nodeValue = target; // keep dice element
+    $('status').textContent='请点开始朗读';
+    $('heard').textContent='';$('bigstar').textContent='';
+    $('meter').style.width='0%';
+    $('btnListen').disabled=false;$('btnStop').disabled=true;$('btnRetry').disabled=true;
   });
 }
-function checkVolume(){
-  analyser.getByteTimeDomainData(dataArray);
-  let sum=0; for(let i=0;i<dataArray.length;i++){const v=(dataArray[i]-128)/128; sum+=v*v;}
-  const rms=Math.sqrt(sum/dataArray.length);
-  const threshold=0.01;
-  const now=Date.now();
-  if(rms<threshold){
-    if(!silenceStart) silenceStart=now;
-    else if(now-silenceStart>3000){ stopListen(); return; }
-  }else{
-    silenceStart=null;
-  }
-  // Fallback: check last result time
-  if(now - lastResultTime > 3000){ stopListen(); return; }
-  if(listening) requestAnimationFrame(checkVolume);
-}
-function stopListen(){
-  listening=false;
+$('btnNext').onclick=nextSentence;
+$('btnShow').onclick=()=>{if(target) alert(target);};
+
+/* ---------- Speech ---------- */
+let recognition,listening=false;
+function initReco(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){alert('浏览器不支持语音识别');return null;}const r=new SR();r.lang='zh-CN';r.interimResults=true;r.continuous=true;return r;}
+$('btnListen').onclick=()=>{
+  if(!target){nextSentence();return;}
+  recognition=initReco(); if(!recognition) return;
+  kidName = (kidNameEl.value||'kalie').trim() || 'kalie';
+  $('status').textContent='正在听……';
+  $('btnListen').disabled=true;$('btnStop').disabled=false;$('btnRetry').disabled=true;
+  listening=true;
+  recognition.onresult=(e)=>{
+    let buf=''; for(let i=e.resultIndex;i<e.results.length;i++){buf+=e.results[i][0].transcript;}
+    $('heard').textContent=buf;
+    const sim=similarity(buf,target); $('meter').style.width=Math.round(sim*100)+'%';
+  };
+  recognition.onend=()=>{listening=false;};
+  recognition.start();
+};
+$('btnStop').onclick=()=>{
   if(recognition) recognition.stop();
-  if(audioStream) audioStream.getTracks().forEach(t=>t.stop());
-  if(audioContext) audioContext.close();
-  const heard=$("heard").textContent.trim();
-  if(!heard){$("status").textContent="未识别到语音";return;}
+  listening=false;
+  $('btnStop').disabled=true;$('btnListen').disabled=false;$('btnRetry').disabled=false;
+  const heard=$('heard').textContent.trim();
+  if(!heard){$('status').textContent='未识别到语音';return;}
   const sim=similarity(heard,target);
-  const strict=$("strict").checked;
-  const pass=sim>=(strict?0.95:0.88);
+  passThreshold=Number($('thres').value)/100; rewardStep=Number($('rewardStep').value);
+  const pass=sim>=passThreshold;
   if(pass){
-    stars+=1; localStorage.setItem("read_star_stars",String(stars));
-    $("starsCount").textContent=stars;
-    $("bigstar").innerHTML="<span class='ok'>⭐ 太棒了！获得一颗小红星！</span>";
-    $("status").textContent="判定完成";
-    speak("你真棒！");
+    stars+=1; localStorage.setItem('read_star_stars',String(stars)); $('starsCount').textContent=stars;
+    $('bigstar').innerHTML="<span class='ok'>⭐ 太棒了！获得一颗小红星！</span>";
+    $('status').textContent="判定完成（相似度："+Math.round(sim*100)+"%，阈值："+Math.round(passThreshold*100)+"%）";
+    const line = pick(PASS_PHRASES)(kidName);
+    speak(line);
+    if(stars % rewardStep === 0){ openReward(); }
   }else{
-    $("bigstar").textContent="再试一次吧～";
-    $("status").textContent="可以换一句";
-    speak("请加油，再接再厉！");
+    $('bigstar').textContent='再试一次吧～';
+    $('status').textContent="未通过（相似度："+Math.round(sim*100)+"%，阈值："+Math.round(passThreshold*100)+"%）。可以点“重试本句”。";
+    const line = pick(FAIL_PHRASES)(kidName);
+    speak(line);
   }
+};
+$('btnRetry').onclick=()=>{
+  $('heard').textContent='';$('meter').style.width='0%';$('bigstar').textContent='';$('btnListen').click();
+};
+
+/* ---------- Reward images (external & local + manifest) ---------- */
+const IMG_LIST_KEY='read_star_reward_images';
+let rewardImages=[],rewardIdx=Number(localStorage.getItem('read_star_reward_index')||0);
+function loadImages(){try{rewardImages=JSON.parse(localStorage.getItem(IMG_LIST_KEY)||'[]');}catch(e){rewardImages=[];}renderImgList();}
+function saveImages(){localStorage.setItem(IMG_LIST_KEY,JSON.stringify(rewardImages));renderImgList();}
+function renderImgList(){
+  const ul=$('imgList'); ul.innerHTML='';
+  if(rewardImages.length===0){const li=document.createElement('li'); li.textContent='尚未添加图片。请添加链接或上传本地图片，或点击“从目录清单载入”。'; ul.appendChild(li); return;}
+  rewardImages.forEach((src,i)=>{
+    const li=document.createElement('li'); const img=new Image(); img.src=src; img.className='thumb';
+    const del=document.createElement('button'); del.textContent='删除'; del.className='secondary'; del.onclick=()=>{rewardImages.splice(i,1); saveImages();};
+    const span=document.createElement('span'); span.textContent=src.slice(0,60)+(src.length>60?'…':'');
+    li.appendChild(img); li.appendChild(span); li.appendChild(del); ul.appendChild(li);
+  });
 }
-$("btnListen").onclick=startListen;
+$('btnAddUrl').onclick=()=>{const url=$('imgUrl').value.trim(); if(!url) return; rewardImages.push(url); $('imgUrl').value=''; saveImages();};
+$('btnAddFile').onclick=()=>{
+  const f=$('imgFile').files[0]; if(!f) return;
+  const reader=new FileReader(); reader.onload=()=>{rewardImages.push(reader.result); saveImages(); $('imgFile').value='';}; reader.readAsDataURL(f);
+};
+$('btnLoadManifest').onclick=async ()=>{
+  // Try reward_images.json then reward_images.txt
+  async function tryJson(){
+    try{
+      const res = await fetch('reward_images.json', {cache:'no-store'});
+      if(!res.ok) return false;
+      const arr = await res.json();
+      if(Array.isArray(arr)){
+        arr.forEach(p=>{ if(typeof p==='string'){ rewardImages.push(p); } });
+        saveImages(); return true;
+      }
+    }catch(e){}
+    return false;
+  }
+  async function tryTxt(){
+    try{
+      const res = await fetch('reward_images.txt', {cache:'no-store'});
+      if(!res.ok) return false;
+      const txt = await res.text();
+      txt.split(/\r?\n/).map(s=>s.trim()).filter(Boolean).forEach(p=>rewardImages.push(p));
+      saveImages(); return true;
+    }catch(e){}
+    return false;
+  }
+  const ok = await tryJson() || await tryTxt();
+  if(!ok) alert('未找到 reward_images.json / reward_images.txt，或文件格式不正确。请将清单文件与本HTML放在同一目录。');
+};
+loadImages();
+
+/* ---------- Reward modal with gallery, undo, wheel/pinch zoom ---------- */
+function openReward(){ if(rewardImages.length===0){alert('还没有添加奖励图片');return;} showReward(); }
+$('btnColorNow').onclick=openReward;
+
+function showReward(){
+  const modal=$('rewardModal'); modal.style.display='flex'; modal.setAttribute('aria-hidden','false');
+  const view=$('view'); const vctx=view.getContext('2d');
+  const base=document.createElement('canvas'); base.width=1400; base.height=1050; const bctx=base.getContext('2d');
+  const img=new Image(); img.crossOrigin='anonymous';
+  const corsWarn=$('corsWarn'); corsWarn.style.display='none';
+
+  // Undo stack
+  const undoStack=[];
+  function snapshot(){ try{ undoStack.push(bctx.getImageData(0,0,base.width,base.height)); if(undoStack.length>20) undoStack.shift(); }catch(e){} }
+  function undo(){ if(undoStack.length){ const last=undoStack.pop(); bctx.putImageData(last,0,0); drawView(); } }
+
+  // paint state
+  let curColor='#ff7f00'; let mode='paint'; let drawing=false;
+  let zoom=1, panX=0, panY=0;
+
+  // UI init
+  const brush=$('brush'), brushSize=$('brushSize'); brush.oninput=()=>brushSize.textContent=brush.value; brush.dispatchEvent(new Event('input'));
+  const tol=$('tol'), tolVal=$('tolVal'); tol.oninput=()=>tolVal.textContent=tol.value; tol.dispatchEvent(new Event('input'));
+  const colors=['#000000','#3e2723','#795548','#9e9e9e','#ffffff','#ff1744','#ff8a80','#ff6d00','#ffeb3b','#cddc39','#00c853','#4caf50','#00bcd4','#2196f3','#3f51b5','#9c27b0','#e91e63'];
+  const palette=$('palette'); palette.innerHTML=''; colors.forEach(c=>{const sw=document.createElement('div'); sw.className='swatch'; sw.style.background=c; sw.title=c; sw.onclick=()=>{curColor=c;}; palette.appendChild(sw);});
+  const setMode=(m)=>{mode=m; $('toolPaint').className=(m==='paint'?'on':'off'); $('toolBucket').className=(m==='bucket'?'on':'off'); $('toolPan').className=(m==='pan'?'on':'off');};
+  $('toolPaint').onclick=()=>setMode('paint'); $('toolBucket').onclick=()=>setMode('bucket'); $('toolPan').onclick=()=>setMode('pan');
+  $('zoom').oninput=(e)=>{zoom=Number(e.target.value)/100; drawView();};
+  $('zoomIn').onclick=()=>{const z=Math.min(200, Number($('zoom').value)+10); $('zoom').value=z; zoom=z/100; drawView();};
+  $('zoomOut').onclick=()=>{const z=Math.max(50, Number($('zoom').value)-10); $('zoom').value=z; zoom=z/100; drawView();};
+  $('fit').onclick=()=>{$('zoom').value=100; zoom=1; panX=0; panY=0; drawView();};
+
+  // Build gallery
+  const gallery=$('gallery');
+  function buildGallery(activeIndex){
+    gallery.innerHTML='';
+    rewardImages.forEach((src,i)=>{
+      const cell=document.createElement('div');
+      cell.className='gitem'+(i===activeIndex?' active':'');
+      const im=document.createElement('img'); im.src=src;
+      cell.appendChild(im);
+      cell.onclick=()=>{ rewardIdx=i; localStorage.setItem('read_star_reward_index',String(rewardIdx)); loadImage(i); buildGallery(i); };
+      gallery.appendChild(cell);
+    });
+  }
+
+  // Coordinate transforms
+  function viewToBase(x,y){
+    const dx=(view.width - base.width*zoom)/2 + panX;
+    const dy=(view.height - base.height*zoom)/2 + panY;
+    return {x: (x - dx)/zoom, y: (y - dy)/zoom};
+  }
+  function baseToView(x,y){
+    const dx=(view.width - base.width*zoom)/2 + panX;
+    const dy=(view.height - base.height*zoom)/2 + panY;
+    return {x: dx + x*zoom, y: dy + y*zoom};
+  }
+  function drawView(){
+    vctx.clearRect(0,0,view.width,view.height);
+    const dw=base.width*zoom, dh=base.height*zoom;
+    const dx=(view.width - dw)/2 + panX, dy=(view.height - dh)/2 + panY;
+    vctx.imageSmoothingEnabled=true; vctx.imageSmoothingQuality='high';
+    vctx.drawImage(base, dx, dy, dw, dh);
+  }
+  function clearToImage(){
+    bctx.fillStyle='#ffffff'; bctx.fillRect(0,0,base.width,base.height);
+    const iw=img.width, ih=img.height, bw=base.width, bh=base.height;
+    const scale=Math.min(bw/iw, bh/ih);
+    const dw=iw*scale, dh=ih*scale;
+    const dx=(bw-dw)/2, dy=(bh-dh)/2;
+    bctx.drawImage(img, dx, dy, dw, dh);
+  }
+
+  // Brush drawing
+  let last=null;
+  function start(e){
+    drawing=true; last=getPos(e);
+    if(mode==='paint'){ snapshot(); bctx.beginPath(); bctx.moveTo(last.x,last.y); }
+    e.preventDefault();
+  }
+  function move(e){
+    if(!drawing) return;
+    const p=getPos(e);
+    if(mode==='paint'){
+      bctx.lineWidth=Number(brush.value);
+      bctx.lineCap='round'; bctx.lineJoin='round';
+      bctx.strokeStyle=curColor; bctx.globalAlpha=1;
+      bctx.lineTo(p.x,p.y); bctx.stroke();
+      drawView();
+    }else if(mode==='pan'){
+      const r=view.getBoundingClientRect();
+      const vx = (e.touches? e.touches[0].clientX : e.clientX) - r.left;
+      const vy = (e.touches? e.touches[0].clientY : e.clientY) - r.top;
+      const prev = {x:(last.x*zoom + (view.width - base.width*zoom)/2 + panX)*r.width/view.width,
+                    y:(last.y*zoom + (view.height - base.height*zoom)/2 + panY)*r.height/view.height};
+      panX += (vx - prev.x); panY += (vy - prev.y);
+      last = getPos(e);
+      drawView();
+    }
+    e.preventDefault();
+  }
+  function end(){ drawing=false; }
+
+  // Helpers
+  function getPos(e){
+    const r=view.getBoundingClientRect();
+    const vx = (e.touches? e.touches[0].clientX : e.clientX) - r.left;
+    const vy = (e.touches? e.touches[0].clientY : e.clientY) - r.top;
+    const sx = vx * view.width/r.width, sy = vy * view.height/r.height;
+    return viewToBase(sx, sy);
+  }
+
+  // Bucket fill
+  function colorAt(data, x, y, w){const i=(y*w + x)*4; return [data[i],data[i+1],data[i+2],data[i+3]];}
+  function colorEq(a,b, tol){return Math.abs(a[0]-b[0])<=tol && Math.abs(a[1]-b[1])<=tol && Math.abs(a[2]-b[2])<=tol && Math.abs(a[3]-b[3])<=tol;}
+  function setColor(data, x, y, w, col){const i=(y*w + x)*4; data[i]=col[0]; data[i+1]=col[1]; data[i+2]=col[2]; data[i+3]=255;}
+  function hexToRgba(hex){const c=hex.replace('#',''); const bigint=parseInt(c,16);
+    if(c.length===3){const r=(bigint>>8)&0xf; const g=(bigint>>4)&0xf; const b=bigint&0xf; return [r*17,g*17,b*17,255];}
+    return [(bigint>>16)&255,(bigint>>8)&255,bigint&255,255];
+  }
+  function bucketFill(sx,sy,hex,tolerance){
+    sx=Math.floor(sx); sy=Math.floor(sy);
+    if(sx<0||sy<0||sx>=base.width||sy>=base.height) return;
+    snapshot();
+    const imgData=bctx.getImageData(0,0,base.width,base.height);
+    const data=imgData.data, w=imgData.width, h=imgData.height;
+    const target=colorAt(data,sx,sy,w);
+    const fillColor=hexToRgba(hex);
+    if(colorEq(target, fillColor, 0)) return;
+    const stack=[[sx,sy]]; const visited=new Uint8Array(w*h);
+    const tol=Number(tolerance);
+    while(stack.length){
+      const [x,y]=stack.pop();
+      if(x<0||y<0||x>=w||y>=h) continue;
+      const idx=y*w+x; if(visited[idx]) continue;
+      const cur=colorAt(data,x,y,w);
+      if(!colorEq(cur,target,tol)) continue;
+      visited[idx]=1; setColor(data,x,y,w,fillColor);
+      stack.push([x+1,y]); stack.push([x-1,y]); stack.push([x,y+1]); stack.push([x,y-1]);
+    }
+    bctx.putImageData(imgData,0,0);
+    drawView();
+  }
+
+  // Right-click undo
+  view.oncontextmenu = (e)=>{ e.preventDefault(); undo(); };
+
+  // Wheel zoom (centered on cursor)
+  view.addEventListener('wheel', (e)=>{
+    e.preventDefault();
+    const delta = e.deltaY < 0 ? 1.1 : 0.9;
+    const r=view.getBoundingClientRect();
+    const cx=(e.clientX - r.left) * view.width/r.width;
+    const cy=(e.clientY - r.top) * view.height/r.height;
+    const world = viewToBase(cx, cy);
+    const newZoom = Math.min(2.0, Math.max(0.5, zoom * delta));
+    if(newZoom === zoom) return;
+    const before = baseToView(world.x, world.y);
+    zoom = newZoom; $('zoom').value = Math.round(zoom*100);
+    const after = baseToView(world.x, world.y);
+    panX += (cx - after.x);
+    panY += (cy - after.y);
+    drawView();
+  }, {passive:false});
+
+  // Pinch zoom (two fingers)
+  let pinchStartDist = 0, pinchStartZoom = 1, pinchStartMid = null;
+  function distance(t1,t2){ const dx=t1.clientX - t2.clientX, dy=t1.clientY - t2.clientY; return Math.hypot(dx,dy); }
+  function midpoint(t1,t2){ return {x:(t1.clientX+t2.clientX)/2, y:(t1.clientY+t2.clientY)/2}; }
+  view.addEventListener('touchstart', (e)=>{
+    if(e.touches.length===2){
+      pinchStartDist = distance(e.touches[0], e.touches[1]);
+      pinchStartZoom = zoom;
+      const r=view.getBoundingClientRect();
+      const mid = midpoint(e.touches[0], e.touches[1]);
+      const cx=(mid.x - r.left) * view.width/r.width;
+      const cy=(mid.y - r.top) * view.height/r.height;
+      pinchStartMid = {cx, cy, world: viewToBase(cx, cy)};
+    }
+  }, {passive:false});
+  view.addEventListener('touchmove', (e)=>{
+    if(e.touches.length===2 && pinchStartDist>0){
+      e.preventDefault();
+      const dist = distance(e.touches[0], e.touches[1]);
+      const scale = dist / pinchStartDist;
+      zoom = Math.min(2.0, Math.max(0.5, pinchStartZoom * scale));
+      $('zoom').value = Math.round(zoom*100);
+      const after = baseToView(pinchStartMid.world.x, pinchStartMid.world.y);
+      panX += (pinchStartMid.cx - after.x);
+      panY += (pinchStartMid.cy - after.y);
+      drawView();
+    }
+  }, {passive:false});
+  view.addEventListener('touchend', (e)=>{
+    if(e.touches.length<2){ pinchStartDist=0; pinchStartMid=null; }
+  });
+
+  // Interactions
+  view.onmousedown = (e)=>{ if(e.button===2){return;} if(mode==='bucket'){ const p=getPos(e); bucketFill(p.x,p.y,curColor,$('tol').value); } else { start(e); } };
+  view.onmousemove = move; window.onmouseup = end;
+  view.ontouchstart = (e)=>{ if(e.touches.length===1){ if(mode==='bucket'){ const p=getPos(e); bucketFill(p.x,p.y,curColor,$('tol').value); } else { start(e); } } };
+  view.ontouchmove = move; window.ontouchend = end;
+
+  $('btnClear').onclick=()=>{ snapshot(); clearToImage(); drawView(); };
+  $('btnSaveImg').onclick=()=>{
+    try{ const a=document.createElement('a'); a.href=base.toDataURL('image/png'); a.download='我的涂色.png'; a.click(); }
+    catch(err){ corsWarn.style.display='block'; alert('图片源未允许跨域，无法保存 PNG。建议上传本地图片或使用同域/允许 CORS 的图片地址。'); }
+  };
+  $('btnClose').onclick=()=>{ modal.style.display='none'; modal.setAttribute('aria-hidden','true'); };
+
+  // Load image by index & build gallery
+  function loadImage(i){
+    const src=rewardImages[i % rewardImages.length];
+    img.onload=()=>{ clearToImage(); undoStack.length=0; drawView(); };
+    img.onerror=()=>{ corsWarn.style.display='block'; bctx.fillStyle='#fff'; bctx.fillRect(0,0,base.width,base.height); undoStack.length=0; drawView(); };
+    img.src=src;
+    $('zoom').value=100; zoom=1; panX=0; panY=0;
+  }
+  buildGallery(rewardIdx % rewardImages.length);
+  loadImage(rewardIdx % rewardImages.length);
+}
+
+/* Quick entry to color */
+$('btnColorNow').onclick=openReward;
 </script>
 </body>
 </html>
