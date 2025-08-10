@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>朗读小红星 · Read & Star</title>
+  <style>
+    html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Helvetica Neue",Arial,"Noto Sans CJK SC",sans-serif;background:#fafafa;color:#222}
+    .wrap{max-width:900px;margin:0 auto;padding:24px}
+    h1{font-size:22px;margin:0 0 12px}
+    .card{background:#fff;border:1px solid #eee;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.04);padding:16px;margin-bottom:16px}
+    .sentence{font-size:24px;line-height:1.6;padding:12px 0;min-height:3.2em}
+    .btns{display:flex;gap:8px;flex-wrap:wrap}
+    button{border:0;border-radius:10px;padding:10px 14px;font-size:16px;cursor:pointer;background:#2b7cff;color:#fff}
+    button.secondary{background:#eee;color:#222}
+    button.warn{background:#ff7b2b}
+    button:disabled{opacity:.5;cursor:not-allowed}
+    .status{font-size:14px;color:#555;margin-top:6px;min-height:1.4em}
+    .heard{font-size:18px;color:#333;background:#f7f7f7;border-radius:8px;padding:8px 10px;word-break:break-all}
+    .stars{font-size:24px;letter-spacing:2px}
+    .bigstar{font-size:40px}
+    .ok{color:#d80000}
+    .meter{height:10px;background:#eee;border-radius:999px;overflow:hidden}
+    .meter>div{height:100%;background:#2b7cff;width:0%}
+    details summary{cursor:pointer;font-weight:600}
+    textarea{width:100%;min-height:180px;border-radius:10px;border:1px solid #ddd;padding:10px;font-size:14px;line-height:1.6}
+    label{font-size:14px;color:#555}
+    .pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#f0f0f0;margin-right:6px}
+    .footer{font-size:12px;color:#777;margin-top:10px}
+    .flex{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .scorebox{font-size:16px}
+    .small{font-size:12px;color:#666}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>🎤 朗读小红星</h1>
+    <div class="card">
+      <div class="flex">
+        <div class="scorebox">⭐ 已获红星：<span id="starsCount">0</span></div>
+        <span class="pill">识别语言：中文（普通话，简体）</span>
+        <span class="pill">建议浏览器：Chrome / Edge</span>
+      </div>
+      <div class="sentence" id="sentence">点“抽一句”开始</div>
+      <div class="btns">
+        <button id="btnNext">🎲 抽一句</button>
+        <button id="btnListen" class="warn" disabled>🎙️ 开始朗读</button>
+        <button id="btnStop" class="secondary" disabled>⏹️ 停止</button>
+        <button id="btnShow" class="secondary">👀 显示答案</button>
+        <button id="btnReset" class="secondary">🗑️ 清空星星</button>
+      </div>
+      <div class="status" id="status">—</div>
+      <div class="meter"><div id="meter"></div></div>
+      <div class="heard" id="heard"></div>
+      <div class="bigstar" id="bigstar"></div>
+    </div>
+
+    <div class="card">
+      <details>
+        <summary>📚 句子列表（可编辑）</summary>
+        <p class="small">一行一个句子。你可以把题目里的 30 句话粘贴到下面；已内置的是示例，可直接替换。</p>
+        <textarea id="sentencesArea">胖娃娃的脏衣服掉进水里了，小袋鼠看见就笑了。
+小鸭子爬不上路边的桃树，只好在树底下走来走去。
+他一个人在弯弯的道路上，低头看见路边有好多的木头。
+我知道妈妈有五件蓝衣服、六条黑裤子，还有一面大镜子。
+三匹小马的好朋友不会爬树，只会哭。
+春天来了，小草变绿了，桃树开花了，小鸟飞来了。
+大胖子脱下了脏的红裤子，换上了一条有两个口袋的黑裤子。
+听风声雨声就知道下雨有多久了。
+我有两件绿衣服，胸前都有一朵大红花。
+尖尖的船头上飞来了一只红嘴巴的小鸟，船尾走来一只小黑鸡。
+桃树上到底还剩几个小桃子？
+一百个萝卜加八个萝卜，一共有多少个萝卜？
+小蝌蚪长出前腿和后腿，变成了一只小青蛙！青蛙的脑袋比小蝌蚪的大了好多！
+一群小鸭子走进你家大门，都没看见门上有一条大毛毛虫。
+我的好朋友在屋子里坐着。
+我做了两件事，去爬了一座山，到家后挂上了我的衣服。
+红色的火，黄色的土，青色的草，绿色的树，蓝色的天，只有树的脸儿黑。
+你的左手好脏，你的脸上也好脏。
+我知道妈妈爱我，还知道爸爸爱我；我也爱爸爸妈妈。
+下雪了，家门口的大黑石头不见了。哦，变成大白石头啦！
+有七条毛毛虫爬到了妈妈的白菜里边。
+天黑了，月亮来了，星星在闪，风声近了，后来胖娃娃笑着睡了。
+小娃娃看到镜子里有妈妈的笑脸。
+哎嗨哎嗨，小娃娃哭着哭着就笑了！
+一颗红葡萄掉进草地里，一眼就看到了。
+我家比你家去田里近，他家比你家去田里远。
+细细的红线穿成了一朵小小的桃花。
+我长大了会有一匹小红马。
+爸爸的画上有云，有山，有水，有树，有鱼，有鸟，还有九朵花。
+我坐在草地上，看见远远的地里有一群小白羊、一群小黄鸭子，中间还有一头大黑牛。</textarea>
+        <div class="btns">
+          <button id="btnSave" class="secondary">💾 保存列表</button>
+          <button id="btnLoad" class="secondary">↩️ 恢复上次保存</button>
+          <label><input type="checkbox" id="strict"> 使用严格模式（相似度≥95%才算对）</label>
+        </div>
+      </details>
+      <div class="footer">提示：识别不区分全/半角与中英文标点；我们会做模糊匹配，尽量宽容口误。</div>
+    </div>
+  </div>
+
+  <script>
+    // ---- Utility: text normalization for Chinese ----
+    const zhNormalize = (s='') => {
+      return s.toLowerCase()
+        .replace(/[，,。\.！!？\?；;：“”"『』「」\(\)\[\]—\-、·…\s]/g,'')
+        .replace(/哦/g,'喔') // trivial example
+        ;
+    };
+
+    // ---- Levenshtein distance ----
+    function levenshtein(a,b){
+      const an=a.length, bn=b.length;
+      if(an===0) return bn;
+      if(bn===0) return an;
+      const v0=new Array(bn+1).fill(0);
+      const v1=new Array(bn+1).fill(0);
+      for(let i=0;i<=bn;i++) v0[i]=i;
+      for(let i=0;i<an;i++){
+        v1[0]=i+1;
+        for(let j=0;j<bn;j++){
+          const cost = a[i]===b[j]?0:1;
+          v1[j+1]=Math.min(v1[j]+1, v0[j+1]+1, v0[j]+cost);
+        }
+        for(let j=0;j<=bn;j++) v0[j]=v1[j];
+      }
+      return v1[bn];
+    }
+    const similarity = (a,b)=>{
+      const A=zhNormalize(a), B=zhNormalize(b);
+      if (!A && !B) return 1;
+      const dist = levenshtein(A,B);
+      return 1 - dist/Math.max(A.length,B.length);
+    };
+
+    // ---- State ----
+    const $ = (id)=>document.getElementById(id);
+    const meter = $("meter");
+    let pool = [];
+    let target = "";
+    let stars = Number(localStorage.getItem("read_star_stars")||0);
+    $("starsCount").textContent = stars;
+
+    function loadSentences(){
+      const saved = localStorage.getItem("read_star_sents");
+      const text = saved || $("sentencesArea").value;
+      pool = text.split(/\n+/).map(s=>s.trim()).filter(Boolean);
+      return pool;
+    }
+    loadSentences();
+
+    function saveSentences(){
+      localStorage.setItem("read_star_sents", $("sentencesArea").value);
+    }
+    $("btnSave").onclick = ()=>{ saveSentences(); alert("已保存到本机浏览器（不会上传）。"); };
+    $("btnLoad").onclick = ()=>{
+      const saved = localStorage.getItem("read_star_sents");
+      if(saved){ $("sentencesArea").value = saved; loadSentences(); alert("已恢复上次保存的句子列表。"); }
+      else alert("暂未保存过列表。");
+    };
+
+    // ---- Draw next sentence ----
+    function nextSentence(){
+      loadSentences();
+      if(pool.length===0){ alert("请先在句子列表中粘贴内容"); return; }
+      target = pool[Math.floor(Math.random()*pool.length)];
+      $("sentence").textContent = target;
+      $("status").textContent = "请点“开始朗读”，大声读出这句话～";
+      $("heard").textContent = "";
+      $("bigstar").textContent = "";
+      meter.style.width = "0%";
+      $("btnListen").disabled = false;
+      $("btnStop").disabled = true;
+    }
+    $("btnNext").onclick = nextSentence;
+
+    // ---- Speech Recognition ----
+    let recognition;
+    let listening = false;
+    function initReco(){
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if(!SR){ alert("此浏览器不支持语音识别。建议使用 Chrome 或 Edge。"); return null; }
+      const r = new SR();
+      r.lang = "zh-CN";
+      r.interimResults = true;
+      r.continuous = true;
+      return r;
+    }
+
+    function startListen(){
+      if(!target){ nextSentence(); return; }
+      recognition = initReco();
+      if(!recognition) return;
+      $("status").textContent = "正在听……请开始朗读（说完可停）";
+      $("btnListen").disabled = true;
+      $("btnStop").disabled = false;
+      listening = true;
+      let transcriptFinal = "";
+      recognition.onresult = (e)=>{
+        let buf = "";
+        for(let i=e.resultIndex; i<e.results.length; i++){
+          buf += e.results[i][0].transcript;
+          if(e.results[i].isFinal) transcriptFinal = buf;
+        }
+        $("heard").textContent = buf;
+        const sim = similarity(buf, target);
+        meter.style.width = Math.round(sim*100)+"%";
+        const strict = $("strict").checked;
+        const pass = sim >= (strict?0.95:0.88);
+        $("status").textContent = "相似度："+Math.round(sim*100)+"%  "+ (pass?"✅ 差不多啦！":"继续加油～");
+      };
+      recognition.onerror = (e)=>{ $("status").textContent = "识别出错："+e.error; };
+      recognition.onend = ()=>{ if(listening) stopListen(true); };
+      recognition.start();
+    }
+    function stopListen(auto=false){
+      if(recognition){ recognition.stop(); }
+      listening = false;
+      $("btnListen").disabled = false;
+      $("btnStop").disabled = true;
+      // judge
+      const heard = $("heard").textContent.trim();
+      if(!heard){ $("status").textContent = auto? "已停止。":"已停止，未识别到语音。"; return; }
+      const sim = similarity(heard, target);
+      const strict = $("strict").checked;
+      const pass = sim >= (strict?0.95:0.88);
+      if(pass){
+        stars += 1;
+        localStorage.setItem("read_star_stars", String(stars));
+        $("starsCount").textContent = stars;
+        $("bigstar").innerHTML = "<span class='ok'>⭐ 太棒了！获得一颗小红星！</span>";
+        $("status").textContent = "成绩已记录，可继续抽下一句～";
+      }else{
+        $("bigstar").textContent = "再试一次吧～";
+        $("status").textContent = "没关系，换一句或再读一遍就好。";
+      }
+    }
+    $("btnListen").onclick = startListen;
+    $("btnStop").onclick = ()=>stopListen(false);
+    $("btnShow").onclick = ()=>{ if(target) alert("句子是：\n\n"+target); };
+    $("btnReset").onclick = ()=>{
+      if(confirm("确定要清空已获得的小红星吗？")){
+        stars = 0; localStorage.setItem("read_star_stars","0"); $("starsCount").textContent = 0;
+      }
+    };
+
+    // Auto start with one sentence for convenience
+    // nextSentence();
+  </script>
+</body>
+</html>
