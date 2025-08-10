@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>朗读小红星（3秒自动判定+语音鼓励版）</title>
+  <title>朗读小红星（3秒自动判定+语音解锁版）</title>
   <style>
     html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Helvetica Neue",Arial,"Noto Sans CJK SC",sans-serif;background:#fafafa;color:#222}
     .wrap{max-width:900px;margin:0 auto;padding:24px}
@@ -33,7 +33,7 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>🎤 朗读小红星（3秒自动判定+语音鼓励版）</h1>
+    <h1>🎤 朗读小红星（3秒自动判定+语音解锁版）</h1>
     <div class="card">
       <div class="flex">
         <div class="scorebox">⭐ 已获红星：<span id="starsCount">0</span></div>
@@ -159,6 +159,8 @@ function initReco(){
 }
 function startListen(){
   if(!target){nextSentence(); return;}
+  // Unlock speech synthesis
+  speak(" ");
   recognition=initReco(); if(!recognition) return;
   $("status").textContent="正在听……";
   $("btnListen").disabled=true;
@@ -195,7 +197,6 @@ function checkVolume(){
   }else{
     silenceStart=null;
   }
-  // Fallback: check last result time
   if(now - lastResultTime > 3000){ stopListen(); return; }
   if(listening) requestAnimationFrame(checkVolume);
 }
@@ -209,17 +210,19 @@ function stopListen(){
   const sim=similarity(heard,target);
   const strict=$("strict").checked;
   const pass=sim>=(strict?0.95:0.88);
-  if(pass){
-    stars+=1; localStorage.setItem("read_star_stars",String(stars));
-    $("starsCount").textContent=stars;
-    $("bigstar").innerHTML="<span class='ok'>⭐ 太棒了！获得一颗小红星！</span>";
-    $("status").textContent="判定完成";
-    speak("你真棒！");
-  }else{
-    $("bigstar").textContent="再试一次吧～";
-    $("status").textContent="可以换一句";
-    speak("请加油，再接再厉！");
-  }
+  setTimeout(()=>{
+    if(pass){
+      stars+=1; localStorage.setItem("read_star_stars",String(stars));
+      $("starsCount").textContent=stars;
+      $("bigstar").innerHTML="<span class='ok'>⭐ 太棒了！获得一颗小红星！</span>";
+      $("status").textContent="判定完成";
+      speak("你真棒！");
+    }else{
+      $("bigstar").textContent="再试一次吧～";
+      $("status").textContent="可以换一句";
+      speak("请加油，再接再厉！");
+    }
+  },300);
 }
 $("btnListen").onclick=startListen;
 </script>
